@@ -1,5 +1,5 @@
 {
-  "name": "node-mitigator",
+  "name": "mitigator-node",
   "version": "1.0.0",
   "description": "A production-grade, security-first TypeScript library for Node.js. Defends against XSS, Prototype Pollution, Path Traversal, SQL/NoSQL Injection, and more. Includes adaptive rate limiting, WebAuthn/Passkeys, AES-256-GCM sessions, and post-quantum cryptography (WOTS).",
   "main": "./dist/index.cjs",
@@ -17,7 +17,7 @@
     "dist"
   ],
   "bin": {
-    "mitigator-audit": "./dist/bin/mitigator-audit.js"
+    "mitigator-audit": "dist/bin/mitigator-audit.js"
   },
   "engines": {
     "node": ">=18.0.0"
