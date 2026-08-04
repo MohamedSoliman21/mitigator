@@ -21,7 +21,7 @@ Disclosing vulnerabilities publicly before a patch is available puts all users a
 1. **Email**: Send a detailed report to the maintainers privately. Include:
    - A clear description of the vulnerability and its potential impact.
    - Steps to reproduce (proof-of-concept code is strongly encouraged).
-   - The affected version(s) and module(s) (e.g., `mitigator/auth`, `mitigator/crypto`).
+   - The affected version(s) and module(s) (e.g., `node-mitigator/auth`, `node-mitigator/crypto`).
    - Any suggested mitigations or patches you may have.
 
 2. **GitHub Private Advisory** _(preferred)_: Use the
