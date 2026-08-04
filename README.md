@@ -33,7 +33,7 @@ Mitigator provides built-in defenses against the most critical web vulnerabiliti
 ## 🚀 Installation
 
 ```bash
-npm install mitigator-node
+npm install mitigator
 ```
 
 > [!WARNING]
@@ -42,7 +42,7 @@ npm install mitigator-node
 > within the importing module's scope. Use a named alias in browser or edge runtimes:
 >
 > ```typescript
-> import { crypto as mitigatorCrypto } from 'mitigator-node';
+> import { crypto as mitigatorCrypto } from 'mitigator';
 > ```
 
 ---
@@ -72,7 +72,7 @@ npm install mitigator-node
 Prevent XSS by cleaning untrusted HTML or escaping characters. Backed by `sanitize-html`.
 
 ```typescript
-import { sanitize } from 'mitigator-node';
+import { sanitize } from 'mitigator';
 
 // Basic HTML escaping
 const escaped = sanitize.escapeHtml('<script>alert("xss")</script>');
@@ -91,7 +91,7 @@ const safeHtml = sanitize.preventDOMClobbering('<img id="config">');
 Stop path traversal attacks by locking file operations to a root directory.
 
 ```typescript
-import { fs } from 'mitigator-node';
+import { fs } from 'mitigator';
 
 const root = './uploads';
 
@@ -107,7 +107,7 @@ const isPNG = await fs.verifyMagicNumber('image.bin', fs.MAGIC_NUMBERS.PNG);
 Automatically penalize high-risk actors based on security events.
 
 ```typescript
-import { rateLimit } from 'mitigator-node';
+import { rateLimit } from 'mitigator';
 
 const limiter = new rateLimit.AdaptiveRateLimiter({
   standardLimit: 100,
@@ -130,7 +130,7 @@ await limiter.recordSecurityEvent('user-ip', 1);
 Protect your application from Prototype Pollution.
 
 ```typescript
-import { safeJson, safeMerge } from 'mitigator-node';
+import { safeJson, safeMerge } from 'mitigator';
 
 // Parse JSON while stripping __proto__ and constructor keys
 const data = safeJson.parse(untrustedString);
@@ -148,7 +148,7 @@ Implement high-level security and quantum-resistant patterns with ease.
 Split sensitive keys into $M$ cryptographic shares where any $T$ shares can exactly reconstruct the original secret, but fewer than $T$ yields only garbage. Built over Galois Field $GF(256)$ with AES primitive polynomial arithmetic.
 
 ```typescript
-import { crypto } from 'mitigator-node';
+import { crypto } from 'mitigator';
 
 // Split secret key into 5 shares with a threshold of 3
 const shares = crypto.splitSecret('master-key-content', 5, 3);
@@ -172,7 +172,7 @@ Phishing-resistant, quantum-resistant one-time signatures powered by the standar
 > to reuse a private key within the same process.
 
 ```typescript
-import { crypto as mitigatorCrypto } from 'mitigator-node';
+import { crypto as mitigatorCrypto } from 'mitigator';
 
 // Generate key pair
 const { publicKey, privateKey } = mitigatorCrypto.generatePQCKeyPair();
@@ -190,7 +190,7 @@ const isValid = mitigatorCrypto.verifyPQCSignature('quantum-secure-payload', sig
 Server-side mutual authentication using an HMAC challenge-response flow.
 
 ```typescript
-import { auth } from 'mitigator-node';
+import { auth } from 'mitigator';
 
 const salt = 'per-user-random-salt';
 const challenge = auth.generateHmacChallenge(salt);
@@ -205,7 +205,7 @@ const verified = auth.verifyHmacResponse(challenge, proof, sharedSecret); // tru
 Phishing-resistant browser authentication helpers — both registration and assertion flows.
 
 ```typescript
-import { auth } from 'mitigator-node';
+import { auth } from 'mitigator';
 
 // Generate base64url registration challenge
 const challenge = auth.generatePasskeyChallenge();
@@ -241,7 +241,7 @@ Mitigator comes with built-in presets for Express, Fastify, NestJS, and Next.js.
 
 ```typescript
 import express from 'express';
-import { presets } from 'mitigator-node';
+import { presets } from 'mitigator';
 
 const app = express();
 
@@ -260,7 +260,7 @@ app.use(presets.expressErrorHandler);
 
 ```typescript
 import Fastify from 'fastify';
-import { presets } from 'mitigator-node';
+import { presets } from 'mitigator';
 
 const fastify = Fastify();
 
@@ -272,7 +272,7 @@ fastify.register(presets.fastifyPlugin({ rateLimit: true, rateLimitMax: 100 }));
 
 ```typescript
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { presets } from 'mitigator-node';
+import { presets } from 'mitigator';
 
 @Module({})
 export class AppModule implements NestModule {
@@ -291,7 +291,7 @@ export class AppModule implements NestModule {
 ```typescript
 // middleware.ts
 import { NextResponse } from 'next/server';
-import { presets } from 'mitigator-node';
+import { presets } from 'mitigator';
 
 export function middleware(request) {
   const response = NextResponse.next();
@@ -331,7 +331,7 @@ npx mitigator-audit ./src
 Prevent many prototype pollution attacks globally by freezing core prototypes. **Warning**: This may break some legacy libraries that modify built-ins.
 
 ```typescript
-import { utils } from 'mitigator-node';
+import { utils } from 'mitigator';
 
 utils.lockdownPrototypes(); // Freezes Object.prototype, Array.prototype, etc.
 ```
@@ -341,7 +341,7 @@ utils.lockdownPrototypes(); // Freezes Object.prototype, Array.prototype, etc.
 For extremely sensitive data (like decrypted keys), overwrite the buffer once finished.
 
 ```typescript
-import { utils } from 'mitigator-node';
+import { utils } from 'mitigator';
 
 const keyBuffer = Buffer.from('high-entropy-secret');
 // ... use key ...

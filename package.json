@@ -1,5 +1,5 @@
 {
-  "name": "mitigator-node",
+  "name": "mitigator",
   "version": "1.0.0",
   "description": "A production-grade, security-first TypeScript library for Node.js. Defends against XSS, Prototype Pollution, Path Traversal, SQL/NoSQL Injection, and more. Includes adaptive rate limiting, WebAuthn/Passkeys, AES-256-GCM sessions, and post-quantum cryptography (WOTS).",
   "main": "./dist/index.cjs",
@@ -21,6 +21,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsup",
@@ -53,6 +56,14 @@
     "typescript",
     "node"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MohamedSoliman21/mitigator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MohamedSoliman21/mitigator/issues"
+  },
+  "homepage": "https://github.com/MohamedSoliman21/mitigator#readme",
   "author": "Mohamed Soliman",
   "license": "ISC",
   "devDependencies": {
