@@ -1,5 +1,9 @@
 # Mitigator 🛡️
 
+[![npm version](https://img.shields.io/npm/v/mitigator.svg)](https://www.npmjs.com/package/mitigator)
+[![npm downloads](https://img.shields.io/npm/dm/mitigator.svg)](https://www.npmjs.com/package/mitigator)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+
 **Mitigator** is a production-grade, security-first TypeScript library designed to eliminate common vulnerabilities and implement advanced defense-in-depth patterns in Node.js applications.
 
 Unlike generic utility libraries, Mitigator is built with a "Zero-Trust" philosophy, providing tools specifically hardened against XSS, Prototype Pollution, Path Traversal, SQL Injection, and more.
