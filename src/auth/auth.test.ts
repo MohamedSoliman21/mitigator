@@ -107,6 +107,49 @@ describe('Auth Module', () => {
       expect(isJwtValid(token, secret)).toBe(false);
     });
 
+    it('should return false for JWT with future nbf', () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString(
+        'base64url',
+      );
+      const payload = Buffer.from(
+        JSON.stringify({ sub: '123', nbf: Math.floor(Date.now() / 1000) + 3600 }),
+      ).toString('base64url');
+      const dataToSign = `${header}.${payload}`;
+      const signature = crypto.createHmac('sha256', secret).update(dataToSign).digest('base64url');
+      const token = `${dataToSign}.${signature}`;
+
+      expect(isJwtValid(token, secret)).toBe(false);
+    });
+
+    it('should return false for JWT with future iat beyond tolerance', () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString(
+        'base64url',
+      );
+      const payload = Buffer.from(
+        JSON.stringify({ sub: '123', iat: Math.floor(Date.now() / 1000) + 3600 }),
+      ).toString('base64url');
+      const dataToSign = `${header}.${payload}`;
+      const signature = crypto.createHmac('sha256', secret).update(dataToSign).digest('base64url');
+      const token = `${dataToSign}.${signature}`;
+
+      expect(isJwtValid(token, secret)).toBe(false);
+    });
+
+    it('should return true for JWT with valid past nbf and iat', () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString(
+        'base64url',
+      );
+      const now = Math.floor(Date.now() / 1000);
+      const payload = Buffer.from(
+        JSON.stringify({ sub: '123', iat: now - 60, nbf: now - 30, exp: now + 3600 }),
+      ).toString('base64url');
+      const dataToSign = `${header}.${payload}`;
+      const signature = crypto.createHmac('sha256', secret).update(dataToSign).digest('base64url');
+      const token = `${dataToSign}.${signature}`;
+
+      expect(isJwtValid(token, secret)).toBe(true);
+    });
+
     it('should return false for alg: none', () => {
       const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
       const payload = Buffer.from(JSON.stringify({ sub: '123' })).toString('base64url');
@@ -321,7 +364,7 @@ describe('Auth Module', () => {
       expect(parsed?.rpIdHash.toString('hex')).toBe(rpIdHash.toString('hex'));
       expect(parsed?.flags).toBe(flags);
       expect(parsed?.signCount).toBe(100);
-      expect(parsed?.aaguid.toString('hex')).toBe(aaguid.toString('hex'));
+      expect(parsed?.aaguid?.toString('hex')).toBe(aaguid.toString('hex'));
       expect(parsed?.credentialId).toBe(credentialId.toString('base64url'));
       expect(parsed?.publicKeyBytes).toBe(publicKey.toString('hex'));
     });

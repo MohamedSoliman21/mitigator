@@ -135,7 +135,12 @@ export const isJwtValid = (
       return false;
 
     const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-    if (payload.exp && Date.now() >= payload.exp * 1000) return false;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const clockToleranceSec = 60; // 60s tolerance for clock skew
+
+    if (payload.exp && nowSec >= payload.exp) return false;
+    if (payload.nbf && nowSec + clockToleranceSec < payload.nbf) return false;
+    if (payload.iat && nowSec + clockToleranceSec < payload.iat) return false;
 
     // Verify signature
     const dataToSign = `${headerB64}.${payloadB64}`;
@@ -243,11 +248,20 @@ export const verifyPasskeyRegistration = (
   }
 };
 
+export interface AuthenticatorDataResult {
+  rpIdHash: Buffer;
+  flags: number;
+  signCount: number;
+  aaguid?: Buffer;
+  credentialId?: string;
+  publicKeyBytes?: string;
+}
+
 /**
  * Parses WebAuthn raw authenticator data (authData) buffer to extract the
  * aaguid, credential ID, and public key bytes according to the FIDO2 spec.
  */
-export const parseAuthenticatorData = (authData: Buffer) => {
+export const parseAuthenticatorData = (authData: Buffer): AuthenticatorDataResult | null => {
   try {
     const rpIdHash = authData.subarray(0, 32);
     const flags = authData[32];

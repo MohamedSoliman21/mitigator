@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`isJwtValid`** now validates the `nbf` (not-before) claim and rejects tokens with
+  future `iat` (issued-at) timestamps exceeding a 60-second clock skew tolerance.
 - **`TokenBucket`** fixed an issue where initial bucket consumption logic was
   redundant and could handle new bucket creation inconsistently.
 - **`verifyPasskeyRegistration`** now correctly handles browser-format (base64url-encoded)
