@@ -149,7 +149,7 @@ export class TokenBucket {
 
   async consume(id: string, tokens: number = 1): Promise<boolean> {
     const now = Date.now();
-    const bucket = this.buckets.get(id);
+    let bucket = this.buckets.get(id);
 
     if (bucket) {
       const delta = (now - bucket.lastRefill) / 1000;
@@ -157,23 +157,15 @@ export class TokenBucket {
       bucket.tokens = Math.min(this.capacity, bucket.tokens + refill);
       bucket.lastRefill = now;
     } else {
-      const newBucket = { tokens: this.capacity, lastRefill: now };
-      if (newBucket.tokens >= tokens) {
-        newBucket.tokens -= tokens;
-        this.buckets.set(id, newBucket);
-        return true;
-      }
-      this.buckets.set(id, newBucket);
-      return false;
+      bucket = { tokens: this.capacity, lastRefill: now };
+      this.buckets.set(id, bucket);
     }
 
     if (bucket.tokens >= tokens) {
       bucket.tokens -= tokens;
-      this.buckets.set(id, bucket);
       return true;
     }
 
-    this.buckets.set(id, bucket);
     return false;
   }
 }
