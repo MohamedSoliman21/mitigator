@@ -9,12 +9,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [1.0.1] — 2026-09-02
+
 ### Fixed
 
 - **`isJwtValid`** now validates the `nbf` (not-before) claim and rejects tokens with
   future `iat` (issued-at) timestamps exceeding a 60-second clock skew tolerance.
 - **`TokenBucket`** fixed an issue where initial bucket consumption logic was
   redundant and could handle new bucket creation inconsistently.
+- **`parseAuthenticatorData`** now exports an explicit TypeScript return interface
+  `AuthenticatorDataResult` for complete type safety.
 - **`verifyPasskeyRegistration`** now correctly handles browser-format (base64url-encoded)
   `clientDataJSON` in addition to raw JSON strings. Challenge bytes are compared using
   `timingSafeEqual` per WebAuthn Level 2 spec §7.1, preventing timing attacks and encoding
@@ -82,5 +88,6 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MohamedSoliman21/mitigator/releases/tag/v1.0.0

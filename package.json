@@ -1,6 +1,6 @@
 {
   "name": "mitigator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A production-grade, security-first TypeScript library for Node.js. Defends against XSS, Prototype Pollution, Path Traversal, SQL/NoSQL Injection, and more. Includes adaptive rate limiting, WebAuthn/Passkeys, AES-256-GCM sessions, and post-quantum cryptography (WOTS).",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
