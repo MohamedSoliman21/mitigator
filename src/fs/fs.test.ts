@@ -23,6 +23,12 @@ describe('Filesystem Module', () => {
       );
     });
 
+    it('should throw error for null byte injection attempts', () => {
+      expect(() => resolveSafePath(rootDir, 'data.txt\0.png')).toThrow(
+        'Null byte injection detected in path',
+      );
+    });
+
     it('should resolve subdirectory paths correctly', () => {
       const resolved = resolveSafePath(rootDir, 'subdir/data.txt');
       expect(resolved).toBe(resolve(rootDir, 'subdir/data.txt'));

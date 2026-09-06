@@ -131,7 +131,8 @@ describe('Validation Module', () => {
   describe('checkPwnedPassword', () => {
     it('should return count and apiAvailable=true if password is pwned', async () => {
       const mockRes = new EventEmitter();
-      (https.get as any).mockImplementation((_url: string, cb: any) => {
+      (mockRes as any).statusCode = 200;
+      (https.get as any).mockImplementation((_url: unknown, _options: unknown, cb: any) => {
         cb(mockRes);
         // SHA1 of 'password' starts with 5BAA6...
         // Suffix is 1E4C9B93F3F0682250B6CF8331B7EE68FD8
@@ -147,7 +148,8 @@ describe('Validation Module', () => {
 
     it('should return count=0 and apiAvailable=true if password is NOT pwned', async () => {
       const mockRes = new EventEmitter();
-      (https.get as any).mockImplementation((_url: string, cb: any) => {
+      (mockRes as any).statusCode = 200;
+      (https.get as any).mockImplementation((_url: unknown, _options: unknown, cb: any) => {
         cb(mockRes);
         mockRes.emit('data', 'SUFFIX:10\n');
         mockRes.emit('end');
@@ -159,31 +161,65 @@ describe('Validation Module', () => {
       expect(result.apiAvailable).toBe(true);
     });
 
-    it('should return count=0 and apiAvailable=false on HIBP API connection error', async () => {
-      const handlers: Record<string, (arg: unknown) => void> = {};
+    it('should return count=0 and apiAvailable=false if HIBP returns non-200 status', async () => {
+      const mockRes = new EventEmitter();
+      (mockRes as any).statusCode = 503;
+      (mockRes as any).resume = vi.fn();
+      (https.get as any).mockImplementation((_url: unknown, _options: unknown, cb: any) => {
+        cb(mockRes);
+        return new EventEmitter();
+      });
+
+      const result = await checkPwnedPassword('test_pass');
+      expect(result.count).toBe(0);
+      expect(result.apiAvailable).toBe(false);
+      expect((mockRes as any).resume).toHaveBeenCalled();
+    });
+
+    it('should return count=0 and apiAvailable=false on timeout', async () => {
+      const handlers: Record<string, (arg?: unknown) => void> = {};
       const mockReq = {
-        on(event: string, cb: (arg: unknown) => void) {
+        on(event: string, cb: (arg?: unknown) => void) {
+          handlers[event] = cb;
+          return this;
+        },
+        destroy: vi.fn(),
+      };
+      (https.get as any).mockImplementation((_url: unknown, _options: unknown, _cb: any) => {
+        return mockReq;
+      });
+
+      const promise = checkPwnedPassword('test_pass');
+      handlers['timeout']?.();
+      const result = await promise;
+
+      expect(result.count).toBe(0);
+      expect(result.apiAvailable).toBe(false);
+      expect(mockReq.destroy).toHaveBeenCalled();
+    });
+
+    it('should return count=0 and apiAvailable=false on HIBP API connection error', async () => {
+      const handlers: Record<string, (arg?: unknown) => void> = {};
+      const mockReq = {
+        on(event: string, cb: (arg?: unknown) => void) {
           handlers[event] = cb;
           return this;
         },
       };
-      (https.get as any).mockImplementation((_url: string, _cb: any) => {
+      (https.get as any).mockImplementation((_url: unknown, _options: unknown, _cb: any) => {
         return mockReq;
       });
 
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const promise = checkPwnedPassword('some_password');
-      // Trigger the error handler that the implementation registered via .on('error', ...)
       handlers['error']?.(new Error('network down'));
       const result = await promise;
 
-      // Fail-open: count is 0 but the caller KNOWS the API was down
       expect(result.count).toBe(0);
       expect(result.apiAvailable).toBe(false);
       expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining('Mitigator: HIBP API connection error.'),
-        expect.anything(),
+        expect.stringContaining('Mitigator: HIBP API connection unavailable.'),
       );
       spy.mockRestore();
     });

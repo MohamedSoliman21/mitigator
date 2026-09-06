@@ -14,6 +14,10 @@ export const MAGIC_NUMBERS = {
  * Resolves a path relative to a root directory and ensures it doesn't escape the root.
  */
 export const resolveSafePath = (rootDir: string, userInputPath: string): string => {
+  if (userInputPath.includes('\0') || rootDir.includes('\0')) {
+    throw new Error('Security Error: Null byte injection detected in path.');
+  }
+
   const absoluteRoot = resolve(rootDir);
   const resolvedPath = resolve(absoluteRoot, userInputPath);
 

@@ -11,7 +11,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [1.0.2] — 2026-09-06
+## [1.0.3] — 2026-09-07
+
+### Security & Hardening
+
+- **`checkPwnedPassword`**:
+  - Hardened against Server-Side Request Forgery (CWE-918) with strict 5-character hexadecimal regex validation (`HIBP_PREFIX_REGEX = /^[0-9A-F]{5}$/`) and locked origin check (`api.pwnedpasswords.com`).
+  - Added a 5,000ms request timeout with connection abort (`req.destroy()`) to prevent resource exhaustion and hanging socket leaks (CWE-400).
+  - Explicitly validates HTTP status `200 OK` and drains unread response streams (`res.resume()`) on unexpected statuses before early termination.
+  - Sanitized error handling in `catch` blocks to prevent sensitive stack trace or internal diagnostic exposure in logs (CWE-209 / CWE-532).
+- **`resolveSafePath`**:
+  - Added explicit rejection of null-byte characters (`\0`) to prevent null-byte injection and path canonicalization bypasses (CWE-22 / CWE-23).
+
 
 ### Fixed
 

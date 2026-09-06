@@ -33,14 +33,59 @@ export interface CheckPwnedResult {
  * if (!apiAvailable) logger.warn('HIBP API unreachable — skipping pwned check');
  * else if (count > 0) throw new Error('Password found in data breaches');
  */
+/**
+ * Origin for the Have I Been Pwned range API.
+ */
+const HIBP_API_ORIGIN = 'https://api.pwnedpasswords.com';
+
+/**
+ * Strict regex to validate 5-character uppercase hexadecimal prefix.
+ */
+const HIBP_PREFIX_REGEX = /^[0-9A-F]{5}$/;
+
+/**
+ * Checks if a password has been leaked in a data breach using the Have I Been Pwned (HIBP) API.
+ * Uses k-Anonymity (sending only the first 5 characters of the SHA-1 hash) to ensure
+ * the password is never exposed to the API.
+ *
+ * Always resolves — never rejects. If the API is unreachable or returns a non-200 status,
+ * `apiAvailable` will be `false` and `count` will be `0` (inconclusive).
+ * Callers should check `apiAvailable` before treating a zero count as "password is clean".
+ *
+ * @param password The password to check.
+ * @returns {Promise<CheckPwnedResult>} Structured result with breach count and API availability.
+ *
+ * @example
+ * const { count, apiAvailable } = await checkPwnedPassword('hunter2');
+ * if (!apiAvailable) logger.warn('HIBP API unreachable — skipping pwned check');
+ * else if (count > 0) throw new Error('Password found in data breaches');
+ */
 export const checkPwnedPassword = (password: string): Promise<CheckPwnedResult> => {
   return new Promise((resolve) => {
     const hash = createHash('sha1').update(password).digest('hex').toUpperCase();
     const prefix = hash.slice(0, 5);
     const suffix = hash.slice(5);
 
-    https
-      .get(`https://api.pwnedpasswords.com/range/${prefix}`, (res) => {
+    /* v8 ignore next 3 */
+    if (!HIBP_PREFIX_REGEX.test(prefix)) {
+      return resolve({ count: 0, apiAvailable: false });
+    }
+
+    const targetUrl = new URL(`/range/${prefix}`, HIBP_API_ORIGIN);
+    const options: https.RequestOptions = {
+      headers: {
+        'User-Agent': 'Mitigator-Security-Library',
+      },
+      timeout: 5000,
+    };
+
+    const req = https
+      .get(targetUrl, options, (res) => {
+        if (res.statusCode !== 200) {
+          res.resume(); // Discard stream to avoid memory leaks
+          return resolve({ count: 0, apiAvailable: false });
+        }
+
         let data = '';
         res.on('data', (chunk) => (data += chunk));
         res.on('end', () => {
@@ -48,16 +93,20 @@ export const checkPwnedPassword = (password: string): Promise<CheckPwnedResult> 
           for (const line of lines) {
             const [hashSuffix, count] = line.split(':');
             if (hashSuffix === suffix) {
-              return resolve({ count: Number.parseInt(count.trim()), apiAvailable: true });
+              return resolve({ count: Number.parseInt(count.trim(), 10), apiAvailable: true });
             }
           }
           resolve({ count: 0, apiAvailable: true });
         });
       })
-      .on('error', (err) => {
+      .on('timeout', () => {
+        req.destroy();
+        resolve({ count: 0, apiAvailable: false });
+      })
+      .on('error', () => {
         // Fail-open: don't block authentication when HIBP is unreachable.
-        // apiAvailable: false lets the caller decide how to handle the degraded state.
-        console.error('Mitigator: HIBP API connection error.', err);
+        // Avoid leaking internal network details or stack traces to logs (CWE-209/532).
+        console.warn('Mitigator: HIBP API connection unavailable.');
         resolve({ count: 0, apiAvailable: false });
       });
   });
