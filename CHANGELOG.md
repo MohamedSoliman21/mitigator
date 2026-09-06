@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [1.0.2] — 2026-09-06
+
 ### Fixed
 
 - **`basicAuth`** now validates that the username does not contain a colon (`:`), throwing a `TypeError` per RFC 7617 §2.
@@ -94,6 +98,7 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MohamedSoliman21/mitigator/releases/tag/v1.0.0
