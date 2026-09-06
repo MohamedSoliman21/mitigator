@@ -26,6 +26,10 @@ describe('Auth Module', () => {
       const header = basicAuth('user', 'pass');
       expect(header).toBe('Basic dXNlcjpwYXNz');
     });
+
+    it('should throw TypeError if username contains a colon', () => {
+      expect(() => basicAuth('user:name', 'pass')).toThrow(TypeError);
+    });
   });
 
   describe('suggestMFA', () => {
@@ -367,11 +371,12 @@ describe('Auth Module', () => {
       expect(parsed?.aaguid?.toString('hex')).toBe(aaguid.toString('hex'));
       expect(parsed?.credentialId).toBe(credentialId.toString('base64url'));
       expect(parsed?.publicKeyBytes).toBe(publicKey.toString('hex'));
+      expect(parsed?.extensionsPresent).toBe(false);
     });
 
     it('should parse authenticatorData WITHOUT attested credential data', () => {
       const rpIdHash = Buffer.alloc(32, 1);
-      const flags = 0x01; // UP
+      const flags = 0x81; // UP + ED (Extension Data)
       const signCount = Buffer.alloc(4);
       signCount.writeUInt32BE(50);
 
@@ -383,6 +388,7 @@ describe('Auth Module', () => {
       expect(parsed?.flags).toBe(flags);
       expect(parsed?.signCount).toBe(50);
       expect(parsed?.credentialId).toBeUndefined();
+      expect(parsed?.extensionsPresent).toBe(true);
     });
 
     it('should return null for malformed/short authenticatorData', () => {

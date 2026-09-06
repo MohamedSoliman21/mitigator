@@ -145,15 +145,27 @@ export const isEmail = (input: string): boolean => {
 };
 
 /**
+ * Maximum character length inspected by regex heuristics to prevent ReDoS attacks.
+ */
+const MAX_INJECTION_INPUT_LENGTH = 8192;
+
+/**
  * Injection pattern detection (Heuristic).
  * Detects common SQL, NoSQL, and Command Injection payloads.
+ *
+ * @param input The untrusted input string to analyze.
+ * @returns {boolean} True if a known injection payload structure is detected.
  */
 export const hasInjectionPattern = (input: string): boolean => {
   if (typeof input !== 'string') return false;
+  if (input.length > MAX_INJECTION_INPUT_LENGTH) {
+    // Treat excessively long payloads as suspicious to prevent ReDoS
+    return true;
+  }
 
   const dangerousPatterns = [
     // SQL Injection
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC|UNION|ALL|ANY|SOME)\b.*\b(FROM|INTO|SET|TABLE|DATABASE)\b)/i,
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|EXEC|UNION|ALL|ANY|SOME)\b[^\n\r;]{1,256}\b(FROM|INTO|SET|TABLE|DATABASE)\b)/i,
     /'\s*OR\s+'?1'?\s*=\s*'?1/i,
     /"\s*OR\s+"?1"?\s*=\s*"?1/i,
     /--\s*$/,

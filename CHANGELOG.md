@@ -9,6 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`basicAuth`** now validates that the username does not contain a colon (`:`), throwing a `TypeError` per RFC 7617 §2.
+- **`hasInjectionPattern`** now enforces an input length cap (8192 characters) and bounded regex quantifiers to prevent ReDoS attacks from oversized or crafted inputs.
+- **`parseAuthenticatorData`** now parses the extension data present flag (bit 7) and returns `extensionsPresent` in `AuthenticatorDataResult`.
+
 ---
 
 ## [1.0.1] — 2026-09-02

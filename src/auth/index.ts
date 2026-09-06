@@ -2,9 +2,14 @@ import { Buffer } from 'node:buffer';
 import { randomBytes, timingSafeEqual, createHmac, createHash, verify } from 'node:crypto';
 
 /**
- * Basic authentication helper.
+ * Basic authentication helper (RFC 7617).
+ *
+ * @throws {TypeError} If the user identifier contains a colon (':'), which is forbidden by RFC 7617 §2.
  */
 export const basicAuth = (user: string, pass: string): string => {
+  if (user.includes(':')) {
+    throw new TypeError("Mitigator: basicAuth username cannot contain a colon (':') per RFC 7617.");
+  }
   const credentials = user + ':' + pass;
   return 'Basic ' + Buffer.from(credentials).toString('base64');
 };
@@ -255,6 +260,7 @@ export interface AuthenticatorDataResult {
   aaguid?: Buffer;
   credentialId?: string;
   publicKeyBytes?: string;
+  extensionsPresent?: boolean;
 }
 
 /**
@@ -267,11 +273,13 @@ export const parseAuthenticatorData = (authData: Buffer): AuthenticatorDataResul
     const flags = authData[32];
     const signCount = authData.readUInt32BE(33);
 
-    // Bit 6 of flags indicates if attestedCredentialData is present
+    // Bit 6: attestedCredentialData present
     const attestedCredentialDataPresent = !!(flags & 0x40);
+    // Bit 7: extension data present (ED)
+    const extensionsPresent = !!(flags & 0x80);
 
     if (!attestedCredentialDataPresent) {
-      return { rpIdHash, flags, signCount };
+      return { rpIdHash, flags, signCount, extensionsPresent };
     }
 
     const aaguid = authData.subarray(37, 53);
@@ -286,6 +294,7 @@ export const parseAuthenticatorData = (authData: Buffer): AuthenticatorDataResul
       aaguid,
       credentialId: credentialId.toString('base64url'),
       publicKeyBytes: publicKeyBytes.toString('hex'),
+      extensionsPresent,
     };
   } catch {
     return null;

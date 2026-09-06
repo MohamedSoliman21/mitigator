@@ -121,6 +121,11 @@ describe('Validation Module', () => {
       expect(hasInjectionPattern(123 as any)).toBe(false);
       expect(hasInjectionPattern(null as any)).toBe(false);
     });
+
+    it('should flag excessively long inputs (>8192 chars) to prevent ReDoS', () => {
+      const longInput = 'A'.repeat(8193);
+      expect(hasInjectionPattern(longInput)).toBe(true);
+    });
   });
 
   describe('checkPwnedPassword', () => {
