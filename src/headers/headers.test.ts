@@ -13,7 +13,7 @@ describe('Headers Module', () => {
       const nonce = generateNonce(16);
       expect(typeof nonce).toBe('string');
       // 16 bytes in base64 is 24 chars (including padding)
-      expect(Buffer.from(nonce, 'base64').length).toBe(16);
+      expect(Buffer.from(nonce, 'base64')).toHaveLength(16);
     });
   });
 

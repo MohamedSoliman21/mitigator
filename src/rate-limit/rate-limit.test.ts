@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MemoryStore, RateLimiter, TokenBucket, AdaptiveRateLimiter, RedisStore } from './index.js';
+import {
+  MemoryStore,
+  RateLimiter,
+  TokenBucket,
+  AdaptiveRateLimiter,
+  RedisStore,
+  type RedisClientLike,
+} from './index.js';
 
 describe('Rate Limiting Module', () => {
   beforeEach(() => {
@@ -21,6 +28,7 @@ describe('Rate Limiting Module', () => {
     it('should call unref on gcInterval if present', async () => {
       vi.useRealTimers();
       const store = new MemoryStore(1000);
+      expect(store).toBeInstanceOf(MemoryStore);
       store.destroy();
       vi.useFakeTimers();
     });
@@ -60,7 +68,7 @@ describe('Rate Limiting Module', () => {
           [null, '1000'],
         ]),
       };
-      const mockRedisClient = {
+      const mockRedisClient: RedisClientLike = {
         multi: vi.fn().mockReturnValue(mockMulti),
         get: vi.fn().mockResolvedValue('10'),
         del: vi.fn().mockResolvedValue(1),
@@ -93,8 +101,11 @@ describe('Rate Limiting Module', () => {
           [null, '-1'],
         ]),
       };
-      const mockRedisClient = {
+      const mockRedisClient: RedisClientLike = {
         multi: vi.fn().mockReturnValue(mockMulti),
+        get: vi.fn().mockResolvedValue(null),
+        del: vi.fn().mockResolvedValue(0),
+        set: vi.fn().mockResolvedValue('OK'),
         pexpire: vi.fn().mockResolvedValue(1),
       };
       const store = new RedisStore(mockRedisClient, 1000);
@@ -103,8 +114,16 @@ describe('Rate Limiting Module', () => {
     });
 
     it('should return undefined if get returns null', async () => {
-      const mockRedisClient = {
+      const mockRedisClient: RedisClientLike = {
+        multi: vi.fn().mockReturnValue({
+          incrby: vi.fn(),
+          pttl: vi.fn(),
+          exec: vi.fn().mockResolvedValue([]),
+        }),
         get: vi.fn().mockResolvedValue(null),
+        del: vi.fn().mockResolvedValue(0),
+        set: vi.fn().mockResolvedValue('OK'),
+        pexpire: vi.fn().mockResolvedValue(1),
       };
       const store = new RedisStore(mockRedisClient, 1000);
       expect(await store.get('k')).toBeUndefined();

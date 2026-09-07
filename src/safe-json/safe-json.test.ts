@@ -54,23 +54,13 @@ describe('Safe JSON Module', () => {
       expect(containsPollution({ a: 1, b: { c: 2 } })).toBe(false);
     });
 
-    it('should detect __proto__ key', () => {
-      const polluted = JSON.parse('{"__proto__": {"polluted": true}}');
-      expect(containsPollution(polluted)).toBe(true);
-    });
-
-    it('should detect constructor key', () => {
-      const polluted = JSON.parse('{"constructor": {"polluted": true}}');
-      expect(containsPollution(polluted)).toBe(true);
-    });
-
-    it('should detect prototype key', () => {
-      const polluted = JSON.parse('{"prototype": {"polluted": true}}');
-      expect(containsPollution(polluted)).toBe(true);
-    });
-
-    it('should detect pollution in nested objects', () => {
-      const polluted = JSON.parse('{"a": {"b": {"__proto__": {}}}}');
+    it.each([
+      { name: '__proto__', json: '{"__proto__": {"polluted": true}}' },
+      { name: 'constructor', json: '{"constructor": {"polluted": true}}' },
+      { name: 'prototype', json: '{"prototype": {"polluted": true}}' },
+      { name: 'nested objects', json: '{"a": {"b": {"__proto__": {}}}}' },
+    ])('should detect pollution with $name key', ({ json }) => {
+      const polluted = JSON.parse(json);
       expect(containsPollution(polluted)).toBe(true);
     });
   });

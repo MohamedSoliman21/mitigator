@@ -23,6 +23,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **`resolveSafePath`**:
   - Added explicit rejection of null-byte characters (`\0`) to prevent null-byte injection and path canonicalization bypasses (CWE-22 / CWE-23).
 
+### Quality & Static Analysis
+
+- **`rate-limit.test.ts`**:
+  - Added assertion verification for `MemoryStore` garbage collection unref test.
+  - Strongly typed mock Redis client to conform to `RedisClientLike` interface.
+- **`crypto`**:
+  - Refactored message status check to optional chaining (`msg?.status`).
+  - Converted worker child bootstrap initialization to top-level `await`.
+- **SonarQube Refactoring**:
+  - Converted duplicate test suites in `src/safe-json/safe-json.test.ts` and `src/sanitize/sanitize.test.ts` into parameterized `it.each` suites.
+  - Used `.toHaveLength(16)` assertion in `src/headers/headers.test.ts` for improved diagnostic reporting.
 
 ### Fixed
 

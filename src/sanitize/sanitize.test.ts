@@ -43,22 +43,24 @@ describe('Sanitization Module', () => {
       expect(sanitized).toContain('<a href="https://example.com" title="link">');
     });
 
-    it('should block dangerous scripts and event handlers', () => {
-      const input = '<p onclick="alert(1)">Text</p><script>evil()</script>';
-      const sanitized = sanitizeHtml(input);
-      expect(sanitized).toBe('<p>Text</p>');
-    });
-
-    it('should block malicious href protocols', () => {
-      const input = '<a href="javascript:alert(1)">Link</a>';
-      const sanitized = sanitizeHtml(input);
-      expect(sanitized).toBe('<a>Link</a>');
-    });
-
-    it('should block unknown tags', () => {
-      const input = '<unknown>Tag</unknown>';
-      const sanitized = sanitizeHtml(input);
-      expect(sanitized).toBe('Tag');
+    it.each([
+      {
+        name: 'dangerous scripts and event handlers',
+        input: '<p onclick="alert(1)">Text</p><script>evil()</script>',
+        expected: '<p>Text</p>',
+      },
+      {
+        name: 'malicious href protocols',
+        input: '<a href="javascript:alert(1)">Link</a>',
+        expected: '<a>Link</a>',
+      },
+      {
+        name: 'unknown tags',
+        input: '<unknown>Tag</unknown>',
+        expected: 'Tag',
+      },
+    ])('should block $name', ({ input, expected }) => {
+      expect(sanitizeHtml(input)).toBe(expected);
     });
   });
 
@@ -69,22 +71,16 @@ describe('Sanitization Module', () => {
       expect(sanitized).toBe('<div id="test-foo" name="test-bar"></div>');
     });
 
-    it('should use default prefix sk-', () => {
-      const input = '<div id="foo"></div>';
-      const sanitized = preventDOMClobbering(input);
-      expect(sanitized).toBe('<div id="sk-foo"></div>');
-    });
-
-    it('should handle single quotes', () => {
-      const input = "<div id='foo'></div>";
-      const sanitized = preventDOMClobbering(input);
-      expect(sanitized).toBe("<div id='sk-foo'></div>");
-    });
-
-    it('should handle no quotes', () => {
-      const input = '<div id=foo></div>';
-      const sanitized = preventDOMClobbering(input);
-      expect(sanitized).toBe('<div id=sk-foo></div>');
+    it.each([
+      {
+        name: 'default prefix sk-',
+        input: '<div id="foo"></div>',
+        expected: '<div id="sk-foo"></div>',
+      },
+      { name: 'single quotes', input: "<div id='foo'></div>", expected: "<div id='sk-foo'></div>" },
+      { name: 'no quotes', input: '<div id=foo></div>', expected: '<div id=sk-foo></div>' },
+    ])('should handle $name', ({ input, expected }) => {
+      expect(preventDOMClobbering(input)).toBe(expected);
     });
   });
 

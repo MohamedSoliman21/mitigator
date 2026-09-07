@@ -74,7 +74,7 @@ export const runIsolatedCrypto = async (functionName: string, args: any[]): Prom
         workerData: { functionName, args },
       });
       worker.on('message', (msg) => {
-        if (msg && msg.status === 'success') {
+        if (msg?.status === 'success') {
           resolve(msg.result !== undefined ? msg.result : msg);
         } else {
           reject(new Error(msg?.error || 'Worker execution failed.'));
@@ -501,4 +501,5 @@ const startWorkerIfChild = async () => {
   }
 };
 
-startWorkerIfChild();
+// Start worker if executed inside worker child thread (void expression to avoid unhandled promise while keeping CJS compatibility)
+void startWorkerIfChild();
