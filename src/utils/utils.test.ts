@@ -70,6 +70,11 @@ describe('Utils Module', () => {
       const error = new SecureError('msg');
       expect(normalizeError(error)).toBe(error);
     });
+
+    it('should handle non-Error inputs gracefully', () => {
+      expect(normalizeError('string error').message).toBe('string error');
+      expect(normalizeError(12345).message).toBe('Unknown error');
+    });
   });
 
   describe('wipeBuffer', () => {
@@ -98,7 +103,10 @@ describe('Utils Module', () => {
         'Security Violation',
       );
       expect(() =>
-        enforceSafeQuery("SELECT * FROM users WHERE id = '1' --", undefined as any),
+        enforceSafeQuery(
+          "SELECT * FROM users WHERE id = '1' --",
+          undefined as unknown as unknown[],
+        ),
       ).toThrow('Security Violation');
     });
 

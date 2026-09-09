@@ -7,6 +7,60 @@ import * as validate from '../validate/index.js';
 
 import { RateLimiter, MemoryStore } from '../rate-limit/index.js';
 
+export interface ExpressRequestLike {
+  ip?: string;
+  connection?: { remoteAddress?: string };
+  body?: unknown;
+  mitigator?: {
+    sanitize: (html: string) => string;
+    safeJson: <T = unknown>(text: string) => T;
+  };
+}
+
+export interface ExpressResponseLike {
+  setHeader(name: string, value: string): void;
+  status(code: number): {
+    json(body: unknown): void;
+  };
+}
+
+export type ExpressNextFunction = (err?: unknown) => void;
+
+export interface NextJsResponseLike {
+  headers: {
+    set(name: string, value: string): void;
+  };
+}
+
+export interface BaseLoggerLike {
+  info: (message: string, ...args: unknown[]) => void;
+  error: (message: string, ...args: unknown[]) => void;
+  warn: (message: string, ...args: unknown[]) => void;
+}
+
+export interface FastifyRequestLike {
+  ip?: string;
+  body?: unknown;
+  mitigator?: {
+    sanitize: (html: string) => string;
+    safeJson: <T = unknown>(text: string) => T;
+  };
+}
+
+export interface FastifyReplyLike {
+  header(name: string, value: string): FastifyReplyLike;
+  code(statusCode: number): {
+    send(payload: unknown): FastifyReplyLike;
+  };
+}
+
+export interface FastifyInstanceLike {
+  addHook(
+    name: 'onRequest' | 'preHandler',
+    hook: (req: FastifyRequestLike, reply: FastifyReplyLike) => Promise<unknown> | void,
+  ): void;
+}
+
 /**
  * A lightweight Express middleware preset.
  */
@@ -21,13 +75,13 @@ export const expressMiddleware = (
       )
     : null;
 
-  return async (req: any, res: any, next: any) => {
+  return async (req: ExpressRequestLike, res: ExpressResponseLike, next: ExpressNextFunction) => {
     Object.entries(headers.standardHeaders).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
 
     if (limiter) {
-      const ip = req.ip || req.connection.remoteAddress || 'unknown';
+      const ip = req.ip || req.connection?.remoteAddress || 'unknown';
       if (await limiter.isLimited(ip)) {
         return res.status(429).json({ error: 'Too Many Requests' });
       }
@@ -56,7 +110,7 @@ export const expressMiddleware = (
  * Next.js Edge Middleware Preset.
  * Note: Next.js edge runtime doesn't support all Node APIs, so we keep it lightweight.
  */
-export const nextJsMiddleware = (_req: any, res: any) => {
+export const nextJsMiddleware = (_req: unknown, res: NextJsResponseLike) => {
   Object.entries(headers.standardHeaders).forEach(([key, value]) => {
     res.headers.set(key, value);
   });
@@ -66,8 +120,16 @@ export const nextJsMiddleware = (_req: any, res: any) => {
 /**
  * Global response error handler for Express.
  */
-export const expressErrorHandler = (err: any, _req: any, res: any, _next: any) => {
-  const secureErr = err instanceof SecureError ? err : new SecureError(err.message);
+export const expressErrorHandler = (
+  err: unknown,
+  _req: ExpressRequestLike,
+  res: ExpressResponseLike,
+  _next: ExpressNextFunction,
+) => {
+  const secureErr =
+    err instanceof SecureError
+      ? err
+      : new SecureError(err instanceof Error ? err.message : String(err));
   res.status(secureErr.code === 'BAD_INPUT' ? 400 : 500).json(secureErr.toJSON());
 };
 
@@ -79,23 +141,23 @@ export const expressErrorHandler = (err: any, _req: any, res: any, _next: any) =
 export class SecureLoggerChain {
   private lastHash: string = '';
 
-  constructor(private readonly baseLogger: { info: Function; error: Function; warn: Function }) {
+  constructor(private readonly baseLogger: BaseLoggerLike) {
     // Initialize with a unique "seed" hash
     this.lastHash = createHash('sha256').update(Date.now().toString()).digest('hex');
   }
 
-  private chain(msg: string, data: any): string {
+  private chain(msg: string, data: unknown): string {
     const payload = JSON.stringify({ msg, data, prev: this.lastHash });
     this.lastHash = createHash('sha256').update(payload).digest('hex');
     return this.lastHash;
   }
 
-  info(msg: string, data?: any) {
+  info(msg: string, data?: unknown) {
     const hash = this.chain(msg, data);
     this.baseLogger.info(`[CHAIN:${hash}] ${msg}`, redact(data));
   }
 
-  warn(msg: string, data?: any) {
+  warn(msg: string, data?: unknown) {
     if (validate.scanForSecrets(data)) {
       this.baseLogger.warn('CRITICAL: Secret leakage blocked!');
       return;
@@ -104,8 +166,11 @@ export class SecureLoggerChain {
     this.baseLogger.warn(`[CHAIN:${hash}] ${msg}`, redact(data));
   }
 
-  error(msg: string, err?: any) {
-    const secureErr = err instanceof SecureError ? err : new SecureError(err?.message || 'Error');
+  error(msg: string, err?: unknown) {
+    const secureErr =
+      err instanceof SecureError
+        ? err
+        : new SecureError(err instanceof Error ? err.message : String(err || 'Error'));
     const hash = this.chain(msg, secureErr.toJSON());
     this.baseLogger.error(`[CHAIN:${hash}] ${msg}`, redact(secureErr.toJSON()));
   }
@@ -114,7 +179,7 @@ export class SecureLoggerChain {
 /**
  * Convenience logger creator.
  */
-export const createSecureLogger = (baseLogger: any) => new SecureLoggerChain(baseLogger);
+export const createSecureLogger = (baseLogger: BaseLoggerLike) => new SecureLoggerChain(baseLogger);
 
 /**
  * Fastify Plugin Preset.
@@ -131,8 +196,8 @@ export const fastifyPlugin = (
       )
     : null;
 
-  return async (fastify: any) => {
-    fastify.addHook('onRequest', async (req: any, reply: any) => {
+  return async (fastify: FastifyInstanceLike) => {
+    fastify.addHook('onRequest', async (req: FastifyRequestLike, reply: FastifyReplyLike) => {
       Object.entries(headers.standardHeaders).forEach(([key, value]) => {
         reply.header(key, value);
       });
@@ -146,7 +211,7 @@ export const fastifyPlugin = (
       }
     });
 
-    fastify.addHook('preHandler', async (req: any, reply: any) => {
+    fastify.addHook('preHandler', async (req: FastifyRequestLike, reply: FastifyReplyLike) => {
       try {
         if (req.body && typeof req.body === 'object') {
           if (validate.scanForSecrets(req.body)) {
@@ -156,9 +221,11 @@ export const fastifyPlugin = (
             );
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         const secureErr =
-          err instanceof SecureError ? err : new SecureError(err.message, 'BAD_INPUT');
+          err instanceof SecureError
+            ? err
+            : new SecureError(err instanceof Error ? err.message : String(err), 'BAD_INPUT');
         reply.code(400).send(secureErr.toJSON());
         return reply;
       }
@@ -190,7 +257,7 @@ export class NestJsMitigatorMiddleware {
     }
   }
 
-  async use(req: any, res: any, next: () => void) {
+  async use(req: ExpressRequestLike, res: ExpressResponseLike, next: () => void) {
     Object.entries(headers.standardHeaders).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
@@ -212,9 +279,11 @@ export class NestJsMitigatorMiddleware {
           );
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const secureErr =
-        err instanceof SecureError ? err : new SecureError(err.message, 'BAD_INPUT');
+        err instanceof SecureError
+          ? err
+          : new SecureError(err instanceof Error ? err.message : String(err), 'BAD_INPUT');
       res.status(400).json(secureErr.toJSON());
       return;
     }

@@ -1,4 +1,5 @@
 import { createHash, randomInt, randomBytes } from 'node:crypto';
+import type { IncomingHttpHeaders } from 'node:http';
 import * as https from 'node:https';
 
 /**
@@ -47,9 +48,17 @@ export const getHardenedRequestOptions = (
 };
 
 /**
+ * Minimal request interface for HTTP inspection utilities.
+ */
+export interface HttpRequestLike {
+  headers?: IncomingHttpHeaders | Record<string, string | string[] | undefined>;
+  method?: string;
+}
+
+/**
  * JA3 TLS Fingerprinting.
  */
-export const generateTLSFingerprint = (req: any): string => {
+export const generateTLSFingerprint = (req: HttpRequestLike): string => {
   const headers = req.headers || {};
   const fingerprintParts = [
     headers['user-agent'] || '',
@@ -65,7 +74,7 @@ export const generateTLSFingerprint = (req: any): string => {
 /**
  * Analyzestraffic for DoS patterns.
  */
-export const analyzeDoSThreat = (req: any): boolean => {
+export const analyzeDoSThreat = (req: HttpRequestLike): boolean => {
   const headers = req.headers || {};
   if (headers['transfer-encoding'] && headers['content-length']) return true;
   if (headers['connection'] === 'keep-alive' && !headers['content-length'] && req.method === 'POST')
@@ -94,16 +103,16 @@ export const generateFingerprint = (
 /**
  * Projects noise.
  */
-export const projectNoise = (obj: any): any => {
+export const projectNoise = <T extends Record<string, unknown>>(obj: T): T => {
   if (typeof obj !== 'object' || obj === null) return obj;
   const noiseCount = randomInt(1, 4);
-  const result = { ...obj };
+  const result: Record<string, unknown> = { ...obj };
   for (let i = 0; i < noiseCount; i++) {
     const noiseKey = `_sk_${randomBytes(4).toString('hex')}`;
     const noiseValue = randomBytes(8).toString('base64');
     result[noiseKey] = noiseValue;
   }
-  return result;
+  return result as T;
 };
 
 /**

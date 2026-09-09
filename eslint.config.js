@@ -1,7 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -9,7 +9,7 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/no-unused-expressions': 'off',
       '@typescript-eslint/no-unsafe-function-type': 'off',
@@ -25,4 +25,4 @@ export default tseslint.config(
       ],
     },
   },
-);
+];

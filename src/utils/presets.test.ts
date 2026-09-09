@@ -7,15 +7,19 @@ import {
   SecureLoggerChain,
   fastifyPlugin,
   NestJsMitigatorMiddleware,
+  type ExpressRequestLike,
+  type ExpressResponseLike,
+  type FastifyRequestLike,
 } from './presets.js';
 import { SecureError } from './index.js';
 
 describe('Presets Module', () => {
   describe('expressMiddleware', () => {
     it('should set security headers', async () => {
-      const req = {};
-      const res = {
+      const req: ExpressRequestLike = {};
+      const res: ExpressResponseLike = {
         setHeader: vi.fn(),
+        status: vi.fn().mockReturnThis(),
       };
       const next = vi.fn();
 
@@ -24,11 +28,11 @@ describe('Presets Module', () => {
 
       expect(res.setHeader).toHaveBeenCalled();
       expect(next).toHaveBeenCalled();
-      expect((req as any).mitigator).toBeDefined();
-      expect((req as any).mitigator.sanitize('<p>Hello <b>World</b></p>')).toBe(
+      expect(req.mitigator).toBeDefined();
+      expect(req.mitigator?.sanitize('<p>Hello <b>World</b></p>')).toBe(
         '<p>Hello <b>World</b></p>',
       );
-      expect((req as any).mitigator.safeJson('{"a": 1}')).toEqual({ a: 1 });
+      expect(req.mitigator?.safeJson('{"a": 1}')).toEqual({ a: 1 });
     });
 
     it('should rate limit if configured and threshold exceeded', async () => {
@@ -57,11 +61,12 @@ describe('Presets Module', () => {
     });
 
     it('should block secret leakage in req.body', async () => {
-      const req = {
+      const req: ExpressRequestLike = {
         body: { token: 'ghp_123456789012345678901234567890123456' },
       };
-      const res = {
+      const res: ExpressResponseLike = {
         setHeader: vi.fn(),
+        status: vi.fn().mockReturnValue({ json: vi.fn() }),
       };
       const next = vi.fn();
 
@@ -72,13 +77,14 @@ describe('Presets Module', () => {
     });
 
     it('should handle body parsing errors gracefully', async () => {
-      const req = {
+      const req: ExpressRequestLike = {
         get body() {
           throw new Error('parsing error');
         },
       };
-      const res = {
+      const res: ExpressResponseLike = {
         setHeader: vi.fn(),
+        status: vi.fn().mockReturnValue({ json: vi.fn() }),
       };
       const next = vi.fn();
 
@@ -107,29 +113,32 @@ describe('Presets Module', () => {
   describe('expressErrorHandler', () => {
     it('should handle SecureError with BAD_INPUT', () => {
       const err = new SecureError('test', 'BAD_INPUT', 'bad input');
-      const req = {};
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
+      const req: ExpressRequestLike = {};
+      const mockJson = vi.fn();
+      const res: ExpressResponseLike = {
+        setHeader: vi.fn(),
+        status: vi.fn().mockReturnValue({ json: mockJson }),
       };
       const next = vi.fn();
 
       expressErrorHandler(err, req, res, next);
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(err.toJSON());
+      expect(mockJson).toHaveBeenCalledWith(err.toJSON());
     });
 
     it('should handle generic errors', () => {
       const err = new Error('generic');
-      const req = {};
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
+      const req: ExpressRequestLike = {};
+      const mockJson = vi.fn();
+      const res: ExpressResponseLike = {
+        setHeader: vi.fn(),
+        status: vi.fn().mockReturnValue({ json: mockJson }),
       };
       const next = vi.fn();
 
       expressErrorHandler(err, req, res, next);
       expect(res.status).toHaveBeenCalledWith(500);
+      expect(mockJson).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
     });
   });
 
@@ -245,11 +254,11 @@ describe('Presets Module', () => {
       expect(mockReply.code).toHaveBeenCalledWith(400);
 
       // Case 2: Clean request
-      const mockCleanReq = { body: { clean: 'data' } } as any;
+      const mockCleanReq: FastifyRequestLike = { body: { clean: 'data' } };
       await hooks['preHandler'](mockCleanReq, mockReply);
       expect(mockCleanReq.mitigator).toBeDefined();
-      expect(mockCleanReq.mitigator.sanitize('<p>xss</p>')).toBe('<p>xss</p>');
-      expect(mockCleanReq.mitigator.safeJson('{"a":1}')).toEqual({ a: 1 });
+      expect(mockCleanReq.mitigator?.sanitize('<p>xss</p>')).toBe('<p>xss</p>');
+      expect(mockCleanReq.mitigator?.safeJson('{"a":1}')).toEqual({ a: 1 });
     });
   });
 
@@ -258,12 +267,12 @@ describe('Presets Module', () => {
       NestJsMitigatorMiddleware.configure({ rateLimit: true, rateLimitMax: 1 });
       const middleware = new NestJsMitigatorMiddleware();
 
-      const mockReq = { ip: '127.0.0.1', body: { a: 1 }, mitigator: undefined } as any;
-      const mockRes = {
+      const mockReq: ExpressRequestLike = { ip: '127.0.0.1', body: { a: 1 }, mitigator: undefined };
+      const mockJson = vi.fn();
+      const mockRes: ExpressResponseLike = {
         setHeader: vi.fn(),
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
+        status: vi.fn().mockReturnValue({ json: mockJson }),
+      };
       const next = vi.fn();
 
       // First call passes
@@ -271,38 +280,38 @@ describe('Presets Module', () => {
       expect(mockRes.setHeader).toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(1);
       expect(mockReq.mitigator).toBeDefined();
-      expect(mockReq.mitigator.sanitize('<p>xss</p>')).toBe('<p>xss</p>');
-      expect(mockReq.mitigator.safeJson('{"a":1}')).toEqual({ a: 1 });
+      expect(mockReq.mitigator?.sanitize('<p>xss</p>')).toBe('<p>xss</p>');
+      expect(mockReq.mitigator?.safeJson('{"a":1}')).toEqual({ a: 1 });
 
       // Second call limits 429
       await middleware.use(mockReq, mockRes, next);
       expect(mockRes.status).toHaveBeenCalledWith(429);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Too Many Requests' });
+      expect(mockJson).toHaveBeenCalledWith({ error: 'Too Many Requests' });
     });
 
     it('should reject with 400 for secret leakage or body errors', async () => {
       NestJsMitigatorMiddleware.configure({ rateLimit: false });
       const middleware = new NestJsMitigatorMiddleware();
 
-      const mockReq = {
+      const mockReq: ExpressRequestLike = {
         body: { token: 'ghp_123456789012345678901234567890123456' },
-      } as any;
-      const mockRes = {
+      };
+      const mockJson = vi.fn();
+      const mockRes: ExpressResponseLike = {
         setHeader: vi.fn(),
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
+        status: vi.fn().mockReturnValue({ json: mockJson }),
+      };
       const next = vi.fn();
 
       await middleware.use(mockReq, mockRes, next);
       expect(mockRes.status).toHaveBeenCalledWith(400);
 
       // Trigger error in body access
-      const mockErrReq = {
+      const mockErrReq: ExpressRequestLike = {
         get body() {
           throw new Error('parsing error');
         },
-      } as any;
+      };
       await middleware.use(mockErrReq, mockRes, next);
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
@@ -311,24 +320,23 @@ describe('Presets Module', () => {
       NestJsMitigatorMiddleware.configure({ rateLimit: true });
       const middleware = new NestJsMitigatorMiddleware();
 
-      const mockReq = {
+      const mockReq: ExpressRequestLike = {
         connection: { remoteAddress: '192.168.1.1' },
         mitigator: undefined,
-      } as any;
-      const mockRes = {
+      };
+      const mockRes: ExpressResponseLike = {
         setHeader: vi.fn(),
         status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as any;
+      };
       const next = vi.fn();
 
       await middleware.use(mockReq, mockRes, next);
       expect(next).toHaveBeenCalled();
 
       // Test with totally missing IP
-      const mockReqNoIp = {
+      const mockReqNoIp: ExpressRequestLike = {
         mitigator: undefined,
-      } as any;
+      };
       await middleware.use(mockReqNoIp, mockRes, next);
       expect(next).toHaveBeenCalled();
     });

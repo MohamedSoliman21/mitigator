@@ -65,7 +65,10 @@ const workerPool = new BoundedWorkerSemaphore();
  * high-throughput workloads consider replacing this with a persistent pool
  * library such as Piscina.
  */
-export const runIsolatedCrypto = async (functionName: string, args: any[]): Promise<any> => {
+export const runIsolatedCrypto = async <T = unknown>(
+  functionName: string,
+  args: unknown[],
+): Promise<T> => {
   return workerPool.run(async () => {
     getTelemetryProvider().onWorkerSpawned?.(functionName);
     const { Worker } = await import('node:worker_threads');
@@ -242,7 +245,7 @@ export const deriveSubKey = (
 /**
  * AES-256-GCM encrypted persistence.
  */
-export const encryptSession = (obj: any, key: string | Buffer): string => {
+export const encryptSession = (obj: unknown, key: string | Buffer): string => {
   const iv = randomBytes(12);
   const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
   const cipher = createCipheriv('aes-256-gcm', keyBuffer, iv);
@@ -256,7 +259,7 @@ export const encryptSession = (obj: any, key: string | Buffer): string => {
 /**
  * Decrypts AES-256-GCM.
  */
-export const decryptSession = (sessionStr: string, key: string | Buffer): any => {
+export const decryptSession = <T = unknown>(sessionStr: string, key: string | Buffer): T | null => {
   try {
     const [ivHex, authTagHex, encrypted] = sessionStr.split(':');
     const keyBuffer = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
@@ -266,7 +269,7 @@ export const decryptSession = (sessionStr: string, key: string | Buffer): any =>
     decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    return JSON.parse(decrypted);
+    return JSON.parse(decrypted) as T;
   } catch {
     return null;
   }
@@ -492,8 +495,11 @@ const startWorkerIfChild = async () => {
         } else {
           parentPort.postMessage({ status: 'error', error: `Unknown function: ${functionName}` });
         }
-      } catch (err: any) {
-        parentPort.postMessage({ status: 'error', error: err.message });
+      } catch (err: unknown) {
+        parentPort.postMessage({
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
   } catch {

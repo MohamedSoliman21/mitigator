@@ -57,7 +57,7 @@ describe('Filesystem Module', () => {
         }),
         close: vi.fn().mockResolvedValue(undefined),
       };
-      (fs.open as any).mockResolvedValue(mockHandle);
+      vi.mocked(fs.open).mockResolvedValue(mockHandle as unknown as fs.FileHandle);
 
       const result = await verifyMagicNumber('test.png', [0x89, 0x50, 0x4e, 0x47]);
       expect(result).toBe(true);
@@ -72,7 +72,7 @@ describe('Filesystem Module', () => {
         }),
         close: vi.fn().mockResolvedValue(undefined),
       };
-      (fs.open as any).mockResolvedValue(mockHandle);
+      vi.mocked(fs.open).mockResolvedValue(mockHandle as unknown as fs.FileHandle);
 
       const result = await verifyMagicNumber('test.png', [0x89, 0x50, 0x4e, 0x47]);
       expect(result).toBe(false);
@@ -81,7 +81,7 @@ describe('Filesystem Module', () => {
 
   describe('safeRead', () => {
     it('should read file if within root', async () => {
-      (fs.readFile as any).mockResolvedValue('file content');
+      vi.mocked(fs.readFile).mockResolvedValue('file content' as never);
       const content = await safeRead(rootDir, 'data.txt');
       expect(content).toBe('file content');
       expect(fs.readFile).toHaveBeenCalledWith(resolve(rootDir, 'data.txt'), 'utf8');

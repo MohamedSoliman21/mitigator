@@ -118,8 +118,8 @@ describe('Validation Module', () => {
     });
 
     it('should return false for non-string inputs', () => {
-      expect(hasInjectionPattern(123 as any)).toBe(false);
-      expect(hasInjectionPattern(null as any)).toBe(false);
+      expect(hasInjectionPattern(123 as unknown as string)).toBe(false);
+      expect(hasInjectionPattern(null as unknown as string)).toBe(false);
     });
 
     it('should flag excessively long inputs (>8192 chars) to prevent ReDoS', () => {
@@ -129,16 +129,26 @@ describe('Validation Module', () => {
   });
 
   describe('checkPwnedPassword', () => {
+    interface MockResponse extends EventEmitter {
+      statusCode?: number;
+      resume: () => void;
+    }
+
+    const createMockRes = (statusCode: number): MockResponse => {
+      const emitter = new EventEmitter() as MockResponse;
+      emitter.statusCode = statusCode;
+      emitter.resume = vi.fn();
+      return emitter;
+    };
+
     it('should return count and apiAvailable=true if password is pwned', async () => {
-      const mockRes = new EventEmitter();
-      (mockRes as any).statusCode = 200;
-      (https.get as any).mockImplementation((_url: unknown, _options: unknown, cb: any) => {
-        cb(mockRes);
-        // SHA1 of 'password' starts with 5BAA6...
-        // Suffix is 1E4C9B93F3F0682250B6CF8331B7EE68FD8
+      const mockRes = createMockRes(200);
+      vi.mocked(https.get).mockImplementation((_url: unknown, _options: unknown, cb?: unknown) => {
+        const callback = cb as (res: unknown) => void;
+        callback(mockRes);
         mockRes.emit('data', '1E4C9B93F3F0682250B6CF8331B7EE68FD8:99\n');
         mockRes.emit('end');
-        return new EventEmitter();
+        return new EventEmitter() as unknown as ReturnType<typeof https.get>;
       });
 
       const result: CheckPwnedResult = await checkPwnedPassword('password');
@@ -147,13 +157,13 @@ describe('Validation Module', () => {
     });
 
     it('should return count=0 and apiAvailable=true if password is NOT pwned', async () => {
-      const mockRes = new EventEmitter();
-      (mockRes as any).statusCode = 200;
-      (https.get as any).mockImplementation((_url: unknown, _options: unknown, cb: any) => {
-        cb(mockRes);
+      const mockRes = createMockRes(200);
+      vi.mocked(https.get).mockImplementation((_url: unknown, _options: unknown, cb?: unknown) => {
+        const callback = cb as (res: unknown) => void;
+        callback(mockRes);
         mockRes.emit('data', 'SUFFIX:10\n');
         mockRes.emit('end');
-        return new EventEmitter();
+        return new EventEmitter() as unknown as ReturnType<typeof https.get>;
       });
 
       const result = await checkPwnedPassword('secure_password_123');
@@ -162,18 +172,17 @@ describe('Validation Module', () => {
     });
 
     it('should return count=0 and apiAvailable=false if HIBP returns non-200 status', async () => {
-      const mockRes = new EventEmitter();
-      (mockRes as any).statusCode = 503;
-      (mockRes as any).resume = vi.fn();
-      (https.get as any).mockImplementation((_url: unknown, _options: unknown, cb: any) => {
-        cb(mockRes);
-        return new EventEmitter();
+      const mockRes = createMockRes(503);
+      vi.mocked(https.get).mockImplementation((_url: unknown, _options: unknown, cb?: unknown) => {
+        const callback = cb as (res: unknown) => void;
+        callback(mockRes);
+        return new EventEmitter() as unknown as ReturnType<typeof https.get>;
       });
 
       const result = await checkPwnedPassword('test_pass');
       expect(result.count).toBe(0);
       expect(result.apiAvailable).toBe(false);
-      expect((mockRes as any).resume).toHaveBeenCalled();
+      expect(mockRes.resume).toHaveBeenCalled();
     });
 
     it('should return count=0 and apiAvailable=false on timeout', async () => {
@@ -185,8 +194,8 @@ describe('Validation Module', () => {
         },
         destroy: vi.fn(),
       };
-      (https.get as any).mockImplementation((_url: unknown, _options: unknown, _cb: any) => {
-        return mockReq;
+      vi.mocked(https.get).mockImplementation(() => {
+        return mockReq as unknown as ReturnType<typeof https.get>;
       });
 
       const promise = checkPwnedPassword('test_pass');
@@ -206,8 +215,8 @@ describe('Validation Module', () => {
           return this;
         },
       };
-      (https.get as any).mockImplementation((_url: unknown, _options: unknown, _cb: any) => {
-        return mockReq;
+      vi.mocked(https.get).mockImplementation(() => {
+        return mockReq as unknown as ReturnType<typeof https.get>;
       });
 
       const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -2,7 +2,7 @@ import { vi, describe, it, expect, afterAll } from 'vitest';
 
 // Pre-mock environment
 const originalExit = process.exit;
-const mockExit = vi.fn() as any;
+const mockExit = vi.fn((_code?: number) => undefined as never);
 process.exit = mockExit;
 
 const originalArgv = [...process.argv];

@@ -177,7 +177,7 @@ describe('Crypto Module', () => {
 
     it('should return false for malformed signatures or keys', () => {
       expect(verifyPQCSignature('msg', 'short-sig', 'short-pub')).toBe(false);
-      expect(verifyPQCSignature('msg', null as any, 'short-pub')).toBe(false);
+      expect(verifyPQCSignature('msg', null as unknown as string, 'short-pub')).toBe(false);
     });
 
     it('should throw if signing with an invalid private key length', () => {
@@ -193,7 +193,7 @@ describe('Crypto Module', () => {
           public handlers: Record<string, Function[]> = {};
           constructor(
             public filename: string,
-            public options: any,
+            public options: unknown,
           ) {
             setTimeout(() => {
               this.trigger('message', { status: 'success' });
@@ -205,7 +205,7 @@ describe('Crypto Module', () => {
             this.handlers[event].push(cb);
             return this;
           }
-          trigger(event: string, data: any) {
+          trigger(event: string, data: unknown) {
             this.handlers[event]?.forEach((cb) => cb(data));
           }
         }
@@ -229,7 +229,7 @@ describe('Crypto Module', () => {
           public handlers: Record<string, Function[]> = {};
           constructor(
             public filename: string,
-            public options: any,
+            public options: unknown,
           ) {
             setTimeout(() => {
               this.trigger('error', new Error('worker failed'));
@@ -240,7 +240,7 @@ describe('Crypto Module', () => {
             this.handlers[event].push(cb);
             return this;
           }
-          trigger(event: string, data: any) {
+          trigger(event: string, data: unknown) {
             this.handlers[event]?.forEach((cb) => cb(data));
           }
         }
@@ -263,7 +263,7 @@ describe('Crypto Module', () => {
           public handlers: Record<string, Function[]> = {};
           constructor(
             public filename: string,
-            public options: any,
+            public options: unknown,
           ) {
             setTimeout(() => {
               this.trigger('exit', 1);
@@ -274,7 +274,7 @@ describe('Crypto Module', () => {
             this.handlers[event].push(cb);
             return this;
           }
-          trigger(event: string, data: any) {
+          trigger(event: string, data: unknown) {
             this.handlers[event]?.forEach((cb) => cb(data));
           }
         }
@@ -307,7 +307,7 @@ describe('Crypto Module', () => {
             this.handlers[event].push(cb);
             return this;
           }
-          trigger(event: string, data: any) {
+          trigger(event: string, data: unknown) {
             this.handlers[event]?.forEach((cb) => cb(data));
           }
         }

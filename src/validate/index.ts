@@ -125,7 +125,7 @@ export const SECRET_PATTERNS = [
 /**
  * Scans for secrets.
  */
-export const scanForSecrets = (input: any): boolean => {
+export const scanForSecrets = (input: unknown): boolean => {
   if (typeof input === 'string') {
     return SECRET_PATTERNS.some((pattern) => pattern.test(input));
   }
@@ -161,7 +161,7 @@ export type Schema = {
 /**
  * Type validation.
  */
-export const isType = (val: any, type: Schema[keyof Schema]): boolean => {
+export const isType = (val: unknown, type: Schema[keyof Schema]): boolean => {
   if (type === 'array') return Array.isArray(val);
   return typeof val === type && val !== null;
 };
@@ -169,19 +169,20 @@ export const isType = (val: any, type: Schema[keyof Schema]): boolean => {
 /**
  * Schema enforcement.
  */
-export const enforceSchema = <T extends Record<string, any>>(
-  data: any,
+export const enforceSchema = <T extends Record<string, unknown>>(
+  data: unknown,
   schema: Schema,
 ): T | null => {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
-  const result: any = {};
+  const dataRecord = data as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
   for (const key of Object.keys(schema)) {
     const expectedType = schema[key];
-    const value = data[key];
+    const value = dataRecord[key];
     if (value === undefined || !isType(value, expectedType)) return null;
     result[key] = value;
   }
-  return result;
+  return result as T;
 };
 
 /**

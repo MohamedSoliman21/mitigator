@@ -248,8 +248,8 @@ export const verifyPasskeyRegistration = (
     if (!originMatches) return { verified: false, error: 'Origin mismatch.' };
 
     return { verified: true };
-  } catch (err: any) {
-    return { verified: false, error: err.message };
+  } catch (err: unknown) {
+    return { verified: false, error: err instanceof Error ? err.message : String(err) };
   }
 };
 
@@ -414,7 +414,7 @@ export const verifyPasskeyAssertion = (
     if (!sigValid) return { verified: false, error: 'Signature verification failed.' };
 
     return { verified: true, newSignCount };
-  } catch (err: any) {
-    return { verified: false, error: err.message };
+  } catch (err: unknown) {
+    return { verified: false, error: err instanceof Error ? err.message : String(err) };
   }
 };

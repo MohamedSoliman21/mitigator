@@ -6,7 +6,7 @@ const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 /**
  * Checks if a value is a plain object.
  */
-const isObject = (val: any): val is Record<string, any> => {
+const isObject = (val: unknown): val is Record<string, unknown> => {
   return val !== null && typeof val === 'object' && !Array.isArray(val);
 };
 
@@ -31,7 +31,7 @@ export const merge = <T extends object, S extends object>(
     );
   }
 
-  const output = { ...target } as any;
+  const output: Record<string, unknown> = { ...(target as Record<string, unknown>) };
 
   if (isObject(target) && isObject(source)) {
     seen.add(source);
@@ -42,8 +42,8 @@ export const merge = <T extends object, S extends object>(
         return;
       }
 
-      const sourceValue = (source as any)[key];
-      const targetValue = (target as any)[key];
+      const sourceValue = source[key];
+      const targetValue = (target as Record<string, unknown>)[key];
 
       if (isObject(sourceValue) && isObject(targetValue)) {
         output[key] = merge(targetValue, sourceValue, seen);
@@ -53,7 +53,7 @@ export const merge = <T extends object, S extends object>(
     });
   }
 
-  return output;
+  return output as T & S;
 };
 
 /**
@@ -68,16 +68,16 @@ export const sanitizeObject = <T>(obj: T, seen: WeakSet<object> = new WeakSet())
 
   if (Array.isArray(obj)) {
     seen.add(obj);
-    return obj.map((item) => sanitizeObject(item, seen)) as any;
+    return obj.map((item) => sanitizeObject(item, seen)) as unknown as T;
   }
 
   seen.add(obj);
-  const result: any = {};
+  const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (DANGEROUS_KEYS.has(key)) continue;
     result[key] = sanitizeObject(value, seen);
   }
-  return result;
+  return result as T;
 };
 
 /**
@@ -85,7 +85,7 @@ export const sanitizeObject = <T>(obj: T, seen: WeakSet<object> = new WeakSet())
  */
 export const deepFreeze = <T extends object>(obj: T): T => {
   Object.getOwnPropertyNames(obj).forEach((name) => {
-    const prop = (obj as any)[name];
+    const prop = (obj as Record<string, unknown>)[name];
     if (prop !== null && typeof prop === 'object') {
       deepFreeze(prop);
     }

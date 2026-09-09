@@ -6,6 +6,7 @@ import {
   AdaptiveRateLimiter,
   RedisStore,
   type RedisClientLike,
+  type RateLimitStore,
 } from './index.js';
 
 describe('Rate Limiting Module', () => {
@@ -225,7 +226,7 @@ describe('Rate Limiting Module', () => {
       expect(await limiter.isHighRisk('user-risk')).toBe(true);
 
       // 3. High bursts
-      const burstStore = (limiter as any).burstStore;
+      const burstStore = (limiter as unknown as { burstStore: RateLimitStore }).burstStore;
       await burstStore.increment('user-burst:bursts', 3);
       expect(await limiter.isHighRisk('user-burst')).toBe(true);
     });

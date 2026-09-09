@@ -86,10 +86,12 @@ export const buildStrictCSP = (nonce: string): string => {
 /**
  * Parses CSP violation report.
  */
-export const parseCSPReport = (reportBody: any) => {
-  if (!reportBody) return null;
+export const parseCSPReport = (reportBody: unknown) => {
+  if (!reportBody || typeof reportBody !== 'object') return null;
+  const bodyRecord = reportBody as Record<string, unknown>;
   const report =
-    reportBody['csp-report'] || (Array.isArray(reportBody) ? reportBody[0] : reportBody);
+    (bodyRecord['csp-report'] as Record<string, unknown> | undefined) ||
+    (Array.isArray(reportBody) ? (reportBody[0] as Record<string, unknown>) : bodyRecord);
   if (!report?.['blocked-uri']) return null;
   return {
     documentUri: report['document-uri'],

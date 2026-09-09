@@ -9,9 +9,26 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **Strict Typing Enforcement**:
+  - Enforced `@typescript-eslint/no-explicit-any` as an error in `eslint.config.js`.
+  - Exported standard ESLint Flat Config array directly in `eslint.config.js`.
+  - Added strict `npm run typecheck` step to `build` script in `package.json`.
+  - Added strict `typecheck` step to GitHub Actions CI (`test.yml` and `publish.yml`) to fail on any `any` type usage or type checking errors.
+
 ---
 
-## [1.0.3] — 2026-09-07
+## [1.0.4] — 2026-09-08
+
+### Refactor & Type Safety
+
+- **Zero `any` Types**:
+  - Eliminated all `@typescript-eslint/no-explicit-any` warnings across `src/` (achieved 0 ESLint warnings, 0 errors).
+  - Defined minimal structural framework interfaces (`ExpressRequestLike`, `ExpressResponseLike`, `ExpressNextFunction`, `NextJsResponseLike`, `FastifyRequestLike`, `FastifyReplyLike`, `FastifyInstanceLike`, `BaseLoggerLike`, `HttpRequestLike`).
+  - Strengthened generic typing and `unknown` bounds for `safeJson.parse<T = unknown>`, `safeMerge.merge<T, S>`, `safeMerge.sanitizeObject<T>`, `validate.scanForSecrets`, `validate.isType`, and `validate.enforceSchema<T>`.
+  - Replaced all untyped `catch (err: any)` exception clauses with safe `catch (err: unknown)` handlers and `instanceof Error` message normalizers.
+  - Strongly typed test mocks across Vitest test suites without loose `as any` casts.
 
 ### Security & Hardening
 

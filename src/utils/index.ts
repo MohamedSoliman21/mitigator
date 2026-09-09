@@ -22,8 +22,8 @@ export const SENSITIVE_KEYS = new Set([
  */
 export const redact = <T>(obj: T, redactKeys: Set<string> = SENSITIVE_KEYS): T => {
   if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map((item) => redact(item, redactKeys)) as any;
-  const result: any = {};
+  if (Array.isArray(obj)) return obj.map((item) => redact(item, redactKeys)) as unknown as T;
+  const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (redactKeys.has(key.toLowerCase())) {
       result[key] = '[REDACTED]';
@@ -33,7 +33,7 @@ export const redact = <T>(obj: T, redactKeys: Set<string> = SENSITIVE_KEYS): T =
       result[key] = value;
     }
   }
-  return result;
+  return result as T;
 };
 
 /**
@@ -61,9 +61,10 @@ export class SecureError extends Error {
 /**
  * Normalizes an error.
  */
-export const normalizeError = (error: any): SecureError => {
+export const normalizeError = (error: unknown): SecureError => {
   if (error instanceof SecureError) return error;
-  return new SecureError(error?.message || 'Unknown error');
+  if (error instanceof Error) return new SecureError(error.message);
+  return new SecureError(typeof error === 'string' ? error : 'Unknown error');
 };
 
 /**
@@ -73,7 +74,7 @@ export const normalizeError = (error: any): SecureError => {
  *
  * @param buf The Buffer or Uint8Array to zero-out.
  */
-export const wipeBuffer = (buf: Buffer | Uint8Array | any[]): void => {
+export const wipeBuffer = (buf: Buffer | Uint8Array | unknown[]): void => {
   if (Array.isArray(buf)) {
     for (let i = 0; i < buf.length; i++) buf[i] = 0;
   } else if (buf instanceof Buffer || buf instanceof Uint8Array) {
@@ -111,8 +112,8 @@ export interface MinimalLogger {
  * startSelfHealingMonitor(dbConfig, 'db', 600_000, pinoLogger);
  */
 export const startSelfHealingMonitor = (
-  config: Parameters<typeof auditConfig>[0],
-  type: Parameters<typeof auditConfig>[1],
+  config: Record<string, unknown>,
+  type: 'db' | 'redis' | 'auth',
   intervalMs: number = 600000,
   logger: MinimalLogger = console,
 ): void => {
@@ -128,7 +129,7 @@ export const startSelfHealingMonitor = (
 /**
  * SQL Injection Hardening.
  */
-export const enforceSafeQuery = (query: string, params: any[]): void => {
+export const enforceSafeQuery = (query: string, params: unknown[]): void => {
   if ((!params || params.length === 0) && query.toLowerCase().includes('where')) {
     const suspicious = ["'", '"', '=', '--', ';'];
     if (suspicious.some((char) => query.includes(char))) {
@@ -181,7 +182,10 @@ export const checkSecureEnv = (): void => {
 /**
  * Configuration Auditor.
  */
-export const auditConfig = (config: any, type: 'db' | 'redis' | 'auth'): string[] => {
+export const auditConfig = (
+  config: Record<string, unknown>,
+  type: 'db' | 'redis' | 'auth',
+): string[] => {
   const issues: string[] = [];
   if (type === 'db') {
     if (config.ssl === false) issues.push('Database SSL is disabled.');

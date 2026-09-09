@@ -2,7 +2,7 @@
  * Prototype pollution safe JSON parsing with depth limiting to prevent
  * "JSON Depth" or "Billion Laughs" style DoS attacks.
  */
-export const parse = (text: string, maxDepth: number = 10): any => {
+export const parse = <T = unknown>(text: string, maxDepth: number = 10): T => {
   const obj = JSON.parse(text, (key, value) => {
     if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
       return undefined;
@@ -14,19 +14,20 @@ export const parse = (text: string, maxDepth: number = 10): any => {
     throw new Error('Security Error: JSON depth limit exceeded (DoS protection).');
   }
 
-  return obj;
+  return obj as T;
 };
 
 /**
  * Calculates the maximum depth of an object to detect nested-complexity attacks.
  */
-export const getDepth = (obj: any): number => {
+export const getDepth = (obj: unknown): number => {
   if (obj === null || typeof obj !== 'object') return 0;
 
+  const record = obj as Record<string, unknown>;
   let max = 0;
-  for (const key in obj) {
-    if (Object.hasOwn(obj, key)) {
-      max = Math.max(max, getDepth(obj[key]));
+  for (const key in record) {
+    if (Object.hasOwn(record, key)) {
+      max = Math.max(max, getDepth(record[key]));
     }
   }
   return 1 + max;
@@ -35,14 +36,15 @@ export const getDepth = (obj: any): number => {
 /**
  * Recursively checks an object for prototype pollution keys.
  */
-export const containsPollution = (obj: any): boolean => {
+export const containsPollution = (obj: unknown): boolean => {
   if (obj === null || typeof obj !== 'object') return false;
 
-  for (const key in obj) {
+  const record = obj as Record<string, unknown>;
+  for (const key in record) {
     if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
       return true;
     }
-    if (containsPollution(obj[key])) {
+    if (containsPollution(record[key])) {
       return true;
     }
   }

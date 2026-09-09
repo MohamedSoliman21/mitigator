@@ -11,7 +11,7 @@ describe('Safe JSON Module', () => {
     it('should strip prototype pollution keys', () => {
       const input =
         '{"foo": "bar", "__proto__": {"polluted": true}, "constructor": {"polluted": true}}';
-      const result = parse(input);
+      const result = parse<Record<string, unknown>>(input);
       expect(result.foo).toBe('bar');
       expect(Object.hasOwn(result, '__proto__')).toBe(false);
       expect(Object.hasOwn(result, 'constructor')).toBe(false);
