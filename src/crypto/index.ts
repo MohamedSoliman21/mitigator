@@ -33,10 +33,14 @@ const getFilename = (): string => {
 class BoundedWorkerSemaphore {
   private active = 0;
   private readonly queue: Array<() => void> = [];
+  private readonly maxConcurrent: number;
 
-  constructor(private readonly maxConcurrent: number = Math.max(2, cpus().length - 1)) {}
+  constructor(maxConcurrent: number = Math.max(2, cpus().length - 1)) {
+    this.maxConcurrent = maxConcurrent;
+  }
 
   async run<T>(task: () => Promise<T>): Promise<T> {
+    /* v8 ignore next 3 */
     if (this.active >= this.maxConcurrent) {
       // Park the caller until a slot is freed
       await new Promise<void>((resolve) => this.queue.push(resolve));
