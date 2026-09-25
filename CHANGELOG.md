@@ -96,7 +96,7 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - `SECURITY.md` — vulnerability disclosure policy, response timeline, scope, CVSS severity
   classification, and safe harbor statement.
 - `CHANGELOG.md` — this file.
-- `engines` field in `package.json` declaring `>=18.0.0` as the minimum supported Node.js version.
+- `engines` field in `package.json` declaring `>=20.0.0` as the minimum supported Node.js version.
 - `npm audit --audit-level=high` step added to the GitHub Actions CI pipeline.
 - `keywords` array in `package.json` for npm discoverability.
 - `CheckPwnedResult` interface exported from `validate` module.
@@ -137,7 +137,7 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.2...HEAD
-[1.0.2]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...v1.0.2
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...v1.0.4
 [1.0.1]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MohamedSoliman21/mitigator/releases/tag/v1.0.0

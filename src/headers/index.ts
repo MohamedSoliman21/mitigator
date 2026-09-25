@@ -9,7 +9,7 @@ export const standardHeaders = {
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
 };
 
 /**
@@ -73,14 +73,11 @@ export const buildCSP = (directives: CSPDirectives, nonce?: string): string => {
  * @returns {string} The formatted Strict CSP string.
  */
 export const buildStrictCSP = (nonce: string): string => {
-  return buildCSP(
-    {
-      'object-src': ["'none'"],
-      'script-src': ["'strict-dynamic'", `'nonce-${nonce}'`, "'unsafe-inline'", 'http:', 'https:'],
-      'base-uri': ["'none'"],
-    },
-    nonce,
-  );
+  return buildCSP({
+    'object-src': ["'none'"],
+    'script-src': ["'strict-dynamic'", `'nonce-${nonce}'`, "'unsafe-inline'", 'http:', 'https:'],
+    'base-uri': ["'none'"],
+  });
 };
 
 /**

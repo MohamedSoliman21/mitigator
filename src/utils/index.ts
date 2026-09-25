@@ -232,3 +232,10 @@ export const standardSecurityPreset = {
   contentSecurityPolicy: true,
   referrerPolicy: 'strict-origin-when-cross-origin' as const,
 };
+
+/**
+ * @deprecated Renamed to `deterministicDigitTransform` in v1.0.1.
+ * This alias will be removed in a future major version.
+ * Use `deterministicDigitTransform` instead.
+ */
+export const encryptFPE = deterministicDigitTransform;

@@ -17,23 +17,6 @@ export interface CheckPwnedResult {
 }
 
 /**
- * Checks if a password has been leaked in a data breach using the Have I Been Pwned (HIBP) API.
- * Uses k-Anonymity (sending only the first 5 characters of the SHA-1 hash) to ensure
- * the password is never exposed to the API.
- *
- * Always resolves — never rejects. If the API is unreachable, `apiAvailable` will be `false`
- * and `count` will be `0` (inconclusive). Callers should check `apiAvailable` before
- * treating a zero count as "password is clean".
- *
- * @param password The password to check.
- * @returns {Promise<CheckPwnedResult>} Structured result with breach count and API availability.
- *
- * @example
- * const { count, apiAvailable } = await checkPwnedPassword('hunter2');
- * if (!apiAvailable) logger.warn('HIBP API unreachable — skipping pwned check');
- * else if (count > 0) throw new Error('Password found in data breaches');
- */
-/**
  * Origin for the Have I Been Pwned range API.
  */
 const HIBP_API_ORIGIN = 'https://api.pwnedpasswords.com';

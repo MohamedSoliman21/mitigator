@@ -46,6 +46,13 @@ describe('Headers Module', () => {
       expect(csp).toContain("'nonce-abc'");
       expect(csp).toContain("object-src 'none'");
     });
+
+    it('should include the nonce exactly once in script-src', () => {
+      const nonce = 'uniquenonce';
+      const csp = buildStrictCSP(nonce);
+      const occurrences = csp.split(`'nonce-${nonce}'`).length - 1;
+      expect(occurrences).toBe(1);
+    });
   });
 
   describe('parseCSPReport', () => {

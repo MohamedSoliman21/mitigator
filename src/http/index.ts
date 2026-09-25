@@ -72,7 +72,7 @@ export const generateTLSFingerprint = (req: HttpRequestLike): string => {
 };
 
 /**
- * Analyzestraffic for DoS patterns.
+ * Analyzes traffic for DoS patterns.
  */
 export const analyzeDoSThreat = (req: HttpRequestLike): boolean => {
   const headers = req.headers || {};

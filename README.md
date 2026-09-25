@@ -27,7 +27,7 @@ Mitigator provides built-in defenses against the most critical web vulnerabiliti
 - 🛡️ **XSS Protection**: Robust HTML sanitization powered by `sanitize-html` and DOM clobbering prevention.
 - ⚡ **Prototype Pollution Defense**: Secure object merging and safe JSON parsing.
 - 📂 **Path Traversal Mitigation**: Root-locked file system operations.
-- 🔐 **Advanced Auth**: WebAuthn/Passkey verification, JWT signature validation, ZKP challenges, and CSRF protection.
+- 🔐 **Advanced Auth**: WebAuthn/Passkey verification, JWT signature validation, HMAC challenge-response, and CSRF protection.
 - 🧬 **Cryptographic Hardening**: AES-256-GCM sessions, strict scrypt hashing.
 - 🚀 **Performance**: CPU-intensive crypto offloaded to Worker Threads.
 - 🚦 **Adaptive Rate Limiting**: Security-aware throttling with Redis cluster support and global kill-switch.
@@ -53,19 +53,20 @@ npm install mitigator
 
 ## 📦 Modules Overview
 
-| Module      | Description                                                                |
-| :---------- | :------------------------------------------------------------------------- |
-| `sanitize`  | HTML escaping, tag stripping, and robust sanitization (XSS defense).       |
-| `validate`  | Schema enforcement, secret scanning, and pwned password checks.            |
-| `headers`   | Security headers (CSP, HSTS, etc.) and strict CSP builders.                |
-| `auth`      | WebAuthn, HMAC challenge-response, CSRF, JWT validation, and RBAC helpers. |
-| `crypto`    | AES session encryption, SSS, and PQC.                                      |
-| `fs`        | Secure path resolution and magic number file type verification.            |
-| `http`      | URL normalization, TLS fingerprinting, and SRI generation.                 |
-| `rateLimit` | Adaptive rate limiting and Token Bucket implementations.                   |
-| `safeJson`  | DoS-resistant and prototype-pollution safe JSON parsing.                   |
-| `safeMerge` | Deep merging protected against prototype pollution.                        |
-| `utils`     | Sensitive data redaction, secure error handling, and prototype lockdown.   |
+| Module      | Description                                                                          |
+| :---------- | :----------------------------------------------------------------------------------- |
+| `sanitize`  | HTML escaping, tag stripping, and robust sanitization (XSS defense).                 |
+| `validate`  | Schema enforcement, secret scanning, and pwned password checks.                      |
+| `headers`   | Security headers (CSP, HSTS, etc.) and strict CSP builders.                          |
+| `auth`      | WebAuthn, HMAC challenge-response, CSRF, JWT validation, and RBAC helpers.           |
+| `crypto`    | AES session encryption, SSS, and PQC.                                                |
+| `fs`        | Secure path resolution and magic number file type verification.                      |
+| `http`      | URL normalization, TLS fingerprinting, and SRI generation.                           |
+| `rateLimit` | Adaptive rate limiting and Token Bucket implementations.                             |
+| `safeJson`  | DoS-resistant and prototype-pollution safe JSON parsing.                             |
+| `safeMerge` | Deep merging protected against prototype pollution.                                  |
+| `utils`     | Sensitive data redaction, secure error handling, and prototype lockdown.             |
+| `telemetry` | OpenTelemetry-compatible hook system for rate-limit, kill-switch, and worker events. |
 
 ---
 
