@@ -9,6 +9,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [1.0.5] — 2026-09-25
+
+### Fixed
+
+- **`encryptFPE` missing deprecated re-export**: CHANGELOG v1.0.1 promised `encryptFPE` would be
+  kept as a `@deprecated` backward-compat alias for `deterministicDigitTransform`, but it was
+  never added. Any caller using the old name received a runtime crash. The alias is now exported
+  from `utils`.
+- **`buildStrictCSP` double-nonce**: `buildStrictCSP` hardcoded `'nonce-${nonce}'` in the
+  `script-src` sources array _and_ passed `nonce` as a second argument to `buildCSP`, which
+  appended the nonce a second time. The redundant argument has been removed; the nonce now
+  appears exactly once in the emitted CSP string.
+- **`standardHeaders` HSTS missing `preload`**: The `Strict-Transport-Security` value in
+  `standardHeaders` (used by all middleware presets) was missing `; preload`, inconsistent
+  with the `strictTransportSecurity` preset in `utils.standardSecurityPreset`.
+- **Orphaned JSDoc in `validate/index.ts`**: A duplicate, dangling JSDoc block above
+  `HIBP_API_ORIGIN` (not attached to any declaration) has been removed.
+- **Typo in `http/index.ts` JSDoc**: `Analyzestraffic` corrected to `Analyzes traffic`.
+
 ### Changed
 
 - **Strict Typing Enforcement**:
@@ -16,6 +37,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Exported standard ESLint Flat Config array directly in `eslint.config.js`.
   - Added strict `npm run typecheck` step to `build` script in `package.json`.
   - Added strict `typecheck` step to GitHub Actions CI (`test.yml` and `publish.yml`) to fail on any `any` type usage or type checking errors.
+
+### Docs
+
+- **README**: Replaced misleading "ZKP challenges" claim with "HMAC challenge-response".
+- **README**: Added `telemetry` module to the Modules Overview table.
+- **CHANGELOG**: Corrected stated Node.js minimum version from `>=18.0.0` to `>=20.0.0`.
+- **CHANGELOG**: Fixed broken version link footer — added missing `[1.0.4]` link, removed
+  stale `[1.0.2]` reference that had no corresponding changelog section.
 
 ---
 
@@ -137,7 +166,8 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...v1.0.4
 [1.0.1]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MohamedSoliman21/mitigator/releases/tag/v1.0.0
