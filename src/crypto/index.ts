@@ -104,7 +104,9 @@ for (let i = 0; i < 255; i++) {
   gfLog[gfX] = i;
   gfX = gfX << 1;
   if (gfX & 0x100) {
-    gfX = gfX ^ 0x11d; // standard AES primitive polynomial: x^8 + x^4 + x^3 + x^2 + 1
+    // Primitive polynomial x^8 + x^4 + x^3 + x^2 + 1 (0x11d), as used by Reed-Solomon codes.
+    // Note: this is NOT the AES polynomial (0x11b), for which 2 is not a generator.
+    gfX = gfX ^ 0x11d;
   }
 }
 gfExp[255] = gfExp[0];
@@ -208,8 +210,11 @@ export const reconstructSecret = (shares: string[]): Buffer => {
 };
 
 /**
- * Blind Signature Framework placeholder.
- * Allows a client to 'blind' a piece of data before sending it for signing.
+ * Deterministic keyed HMAC-SHA-256 commitment of `data` under `factor`.
+ *
+ * Despite the historical name, this is NOT a blind-signature scheme (e.g. RSA blind
+ * signatures): it provides no unblinding step and no signer-side protocol. It is only
+ * suitable for keyed, one-way obfuscation of a value.
  */
 export const blindData = (data: string | Buffer, factor: string): string => {
   return createHmac('sha256', factor).update(data).digest('hex');

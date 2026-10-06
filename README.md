@@ -150,7 +150,7 @@ Implement high-level security and quantum-resistant patterns with ease.
 
 #### Shamir's Secret Sharing (SSS)
 
-Split sensitive keys into $M$ cryptographic shares where any $T$ shares can exactly reconstruct the original secret, but fewer than $T$ yields only garbage. Built over Galois Field $GF(256)$ with AES primitive polynomial arithmetic.
+Split sensitive keys into $M$ cryptographic shares where any $T$ shares can exactly reconstruct the original secret, but fewer than $T$ yields only garbage. Built over Galois Field $GF(256)$ with primitive polynomial `0x11d` arithmetic (the Reed–Solomon polynomial, not AES's `0x11b`).
 
 ```typescript
 import { crypto } from 'mitigator';
