@@ -11,6 +11,34 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.0.6] — 2026-10-06
+
+### Fixed
+
+- **`isJwtValid` ES256/ES384/ES512**: ECDSA JWT signatures are raw `R||S` (RFC 7518 §3.4), but
+  were verified using Node's default DER encoding, so valid tokens from standard JWT libraries
+  were rejected. `ES*` algorithms are now verified with `dsaEncoding: 'ieee-p1363'`.
+  > ⚠️ DER-encoded ECDSA signatures (which are not valid JWTs) are no longer accepted.
+- **`redact` case sensitivity**: the lowercased input key was compared against the raw
+  `SENSITIVE_KEYS` set, so the default `apiKey` entry never matched and API keys were not
+  redacted. Both sides are now compared case-insensitively, including custom `redactKeys`.
+
+### Security
+
+- **Dependencies**: bumped `sanitize-html` to `^2.18.0` (removes vulnerable `source-map-js` from
+  the production tree) and ran `npm audit fix` for the dev-only `brace-expansion` advisory.
+  `npm audit --audit-level=high` passes again, unblocking the CI audit step.
+
+### Docs
+
+- **`crypto`**: corrected the Shamir GF(256) polynomial description — `0x11d` (Reed–Solomon),
+  not the AES polynomial `0x11b`.
+- **`blindData`**: clarified in JSDoc that it is a keyed HMAC, not a blind-signature scheme.
+- **CHANGELOG**: restored the missing `[1.0.2]` and `[1.0.3]` sections and fixed the
+  `[1.0.4]` compare link.
+
+---
+
 ## [1.0.5] — 2026-09-25
 
 ### Fixed
@@ -59,16 +87,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Replaced all untyped `catch (err: any)` exception clauses with safe `catch (err: unknown)` handlers and `instanceof Error` message normalizers.
   - Strongly typed test mocks across Vitest test suites without loose `as any` casts.
 
-### Security & Hardening
-
-- **`checkPwnedPassword`**:
-  - Hardened against Server-Side Request Forgery (CWE-918) with strict 5-character hexadecimal regex validation (`HIBP_PREFIX_REGEX = /^[0-9A-F]{5}$/`) and locked origin check (`api.pwnedpasswords.com`).
-  - Added a 5,000ms request timeout with connection abort (`req.destroy()`) to prevent resource exhaustion and hanging socket leaks (CWE-400).
-  - Explicitly validates HTTP status `200 OK` and drains unread response streams (`res.resume()`) on unexpected statuses before early termination.
-  - Sanitized error handling in `catch` blocks to prevent sensitive stack trace or internal diagnostic exposure in logs (CWE-209 / CWE-532).
-- **`resolveSafePath`**:
-  - Added explicit rejection of null-byte characters (`\0`) to prevent null-byte injection and path canonicalization bypasses (CWE-22 / CWE-23).
-
 ### Quality & Static Analysis
 
 - **`rate-limit.test.ts`**:
@@ -80,6 +98,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **SonarQube Refactoring**:
   - Converted duplicate test suites in `src/safe-json/safe-json.test.ts` and `src/sanitize/sanitize.test.ts` into parameterized `it.each` suites.
   - Used `.toHaveLength(16)` assertion in `src/headers/headers.test.ts` for improved diagnostic reporting.
+
+---
+
+## [1.0.3] — 2026-09-07
+
+### Security & Hardening
+
+- **`checkPwnedPassword`**:
+  - Hardened against Server-Side Request Forgery (CWE-918) with strict 5-character hexadecimal regex validation (`HIBP_PREFIX_REGEX = /^[0-9A-F]{5}$/`) and locked origin check (`api.pwnedpasswords.com`).
+  - Added a 5,000ms request timeout with connection abort (`req.destroy()`) to prevent resource exhaustion and hanging socket leaks (CWE-400).
+  - Explicitly validates HTTP status `200 OK` and drains unread response streams (`res.resume()`) on unexpected statuses before early termination.
+  - Sanitized error handling in `catch` blocks to prevent sensitive stack trace or internal diagnostic exposure in logs (CWE-209 / CWE-532).
+- **`resolveSafePath`**:
+  - Added explicit rejection of null-byte characters (`\0`) to prevent null-byte injection and path canonicalization bypasses (CWE-22 / CWE-23).
+
+---
+
+## [1.0.2] — 2026-09-06
 
 ### Fixed
 
@@ -166,8 +202,11 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...v1.0.5
-[1.0.4]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...v1.0.4
+[1.0.4]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/MohamedSoliman21/mitigator/releases/tag/v1.0.0
