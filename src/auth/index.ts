@@ -156,9 +156,19 @@ export const isJwtValid = (
       const expectedSignature = createHmac(hashAlg, secretOrPublicKey).update(dataToSign).digest();
       if (signatureBuffer.length !== expectedSignature.length) return false;
       return timingSafeEqual(signatureBuffer, expectedSignature);
-    } else if (algorithm.startsWith('RS') || algorithm.startsWith('ES')) {
-      const hashAlg = algorithm.replace(/RS|ES/, 'sha');
+    } else if (algorithm.startsWith('RS')) {
+      const hashAlg = algorithm.replace('RS', 'sha');
       return verify(hashAlg, Buffer.from(dataToSign), secretOrPublicKey, signatureBuffer);
+    } else if (algorithm.startsWith('ES')) {
+      const hashAlg = algorithm.replace('ES', 'sha');
+      // RFC 7518 §3.4: ECDSA JWT signatures are the raw R||S concatenation (IEEE P1363),
+      // not ASN.1 DER, which is Node's default for `verify`.
+      return verify(
+        hashAlg,
+        Buffer.from(dataToSign),
+        { key: secretOrPublicKey, dsaEncoding: 'ieee-p1363' },
+        signatureBuffer,
+      );
     }
 
     return false;

@@ -195,6 +195,44 @@ describe('Auth Module', () => {
       expect(isJwtValid(token, publicKey, 'RS256')).toBe(true);
     });
 
+    describe.each([
+      { alg: 'ES256', curve: 'prime256v1', hash: 'sha256' },
+      { alg: 'ES384', curve: 'secp384r1', hash: 'sha384' },
+    ])('$alg', ({ alg, curve, hash }) => {
+      const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
+        namedCurve: curve,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      const header = Buffer.from(JSON.stringify({ alg, typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(
+        JSON.stringify({ sub: '123', exp: Math.floor(Date.now() / 1000) + 3600 }),
+      ).toString('base64url');
+      const dataToSign = `${header}.${payload}`;
+
+      it('should accept a spec-compliant raw (R||S) signature', () => {
+        const signature = crypto
+          .sign(hash, Buffer.from(dataToSign), { key: privateKey, dsaEncoding: 'ieee-p1363' })
+          .toString('base64url');
+        expect(isJwtValid(`${dataToSign}.${signature}`, publicKey, alg)).toBe(true);
+      });
+
+      it('should reject a DER-encoded signature', () => {
+        const signature = crypto
+          .sign(hash, Buffer.from(dataToSign), privateKey)
+          .toString('base64url');
+        expect(isJwtValid(`${dataToSign}.${signature}`, publicKey, alg)).toBe(false);
+      });
+
+      it('should reject a signature made by a different key', () => {
+        const other = crypto.generateKeyPairSync('ec', { namedCurve: curve });
+        const signature = crypto
+          .sign(hash, Buffer.from(dataToSign), { key: other.privateKey, dsaEncoding: 'ieee-p1363' })
+          .toString('base64url');
+        expect(isJwtValid(`${dataToSign}.${signature}`, publicKey, alg)).toBe(false);
+      });
+    });
+
     it('should return false if token is totally invalid or malformed causing throws', () => {
       expect(isJwtValid('invalid-token', 'secret')).toBe(false);
       expect(isJwtValid('a.b.c', 'secret')).toBe(false);
