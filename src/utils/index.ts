@@ -19,16 +19,26 @@ export const SENSITIVE_KEYS = new Set([
 
 /**
  * Redacts sensitive keys.
+ *
+ * Key matching is case-insensitive on both sides: entries in `redactKeys`
+ * (e.g. `'apiKey'`) match object keys regardless of casing (`apikey`, `APIKEY`).
  */
 export const redact = <T>(obj: T, redactKeys: Set<string> = SENSITIVE_KEYS): T => {
+  const normalizedKeys = new Set(Array.from(redactKeys, (k) => k.toLowerCase()));
+  return redactWithNormalizedKeys(obj, normalizedKeys);
+};
+
+const redactWithNormalizedKeys = <T>(obj: T, normalizedKeys: Set<string>): T => {
   if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map((item) => redact(item, redactKeys)) as unknown as T;
+  if (Array.isArray(obj)) {
+    return obj.map((item) => redactWithNormalizedKeys(item, normalizedKeys)) as unknown as T;
+  }
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (redactKeys.has(key.toLowerCase())) {
+    if (normalizedKeys.has(key.toLowerCase())) {
       result[key] = '[REDACTED]';
     } else if (typeof value === 'object') {
-      result[key] = redact(value, redactKeys);
+      result[key] = redactWithNormalizedKeys(value, normalizedKeys);
     } else {
       result[key] = value;
     }

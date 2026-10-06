@@ -37,6 +37,20 @@ describe('Utils Module', () => {
       expect(result[0].password).toBe('[REDACTED]');
       expect(result[1].password).toBe('[REDACTED]');
     });
+
+    it('should redact the mixed-case default key apiKey regardless of input casing', () => {
+      const result = redact({ apiKey: 'a', apikey: 'b', APIKEY: 'c', safe: 'd' });
+      expect(result.apiKey).toBe('[REDACTED]');
+      expect(result.apikey).toBe('[REDACTED]');
+      expect(result.APIKEY).toBe('[REDACTED]');
+      expect(result.safe).toBe('d');
+    });
+
+    it('should match custom mixed-case redact keys case-insensitively', () => {
+      const result = redact({ SessionId: 'x', other: 'y' }, new Set(['sessionId']));
+      expect(result.SessionId).toBe('[REDACTED]');
+      expect(result.other).toBe('y');
+    });
   });
 
   describe('SecureError', () => {
