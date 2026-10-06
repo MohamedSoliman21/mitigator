@@ -11,7 +11,7 @@ For **security vulnerabilities**, follow the process in [SECURITY.md](SECURITY.m
 
 ### Prerequisites
 
-- **Node.js** `>=18.0.0` (see `.node-version` or the `engines` field in `package.json`)
+- **Node.js** `>=20.0.0` (see the `engines` field in `package.json`)
 - **npm** `>=9`
 
 ### Setup
@@ -37,7 +37,7 @@ npm test
 
 ```
 src/
-├── auth/           # WebAuthn, JWT, CSRF, ZKP, RBAC
+├── auth/           # WebAuthn, JWT, CSRF, HMAC challenge-response, RBAC
 ├── bin/            # mitigator-audit CLI
 ├── crypto/         # AES-GCM, Shamir SSS, WOTS PQC, Worker Threads
 ├── fs/             # Path traversal prevention, magic number checks

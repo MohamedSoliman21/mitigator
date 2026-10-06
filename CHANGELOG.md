@@ -9,6 +9,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Docs
+
+- **CONTRIBUTING**: corrected the stated Node.js minimum (`>=20.0.0`) and replaced the stale "ZKP"
+  reference with "HMAC challenge-response".
+
 ---
 
 ## [1.0.6] — 2026-10-06
