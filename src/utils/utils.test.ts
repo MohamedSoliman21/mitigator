@@ -188,30 +188,6 @@ describe('Utils Module', () => {
     });
   });
 
-  describe('lockdownPrototypes', () => {
-    it('should freeze core prototypes', () => {
-      lockdownPrototypes();
-      expect(Object.isFrozen(Object.prototype)).toBe(true);
-      expect(Object.isFrozen(Array.prototype)).toBe(true);
-      expect(Object.isFrozen(String.prototype)).toBe(true);
-    });
-
-    it('should log error if lockdownPrototypes fails', () => {
-      const originalFreeze = Object.freeze;
-      Object.freeze = vi.fn().mockImplementation(() => {
-        throw new Error('freeze failed');
-      });
-
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      lockdownPrototypes();
-
-      expect(spy).toHaveBeenCalledWith('Mitigator Error: Failed to lockdown prototypes.');
-
-      Object.freeze = originalFreeze;
-      spy.mockRestore();
-    });
-  });
-
   describe('startSelfHealingMonitor', () => {
     it('should start self-healing monitor and log config drift issues', () => {
       const config = { ssl: false, port: 5432 };
@@ -263,6 +239,30 @@ describe('Utils Module', () => {
       consoleSpy.mockRestore();
 
       vi.useRealTimers();
+    });
+  });
+
+  describe('lockdownPrototypes', () => {
+    it('should freeze core prototypes', () => {
+      lockdownPrototypes();
+      expect(Object.isFrozen(Object.prototype)).toBe(true);
+      expect(Object.isFrozen(Array.prototype)).toBe(true);
+      expect(Object.isFrozen(String.prototype)).toBe(true);
+    });
+
+    it('should log error if lockdownPrototypes fails', () => {
+      const originalFreeze = Object.freeze;
+      Object.freeze = vi.fn().mockImplementation(() => {
+        throw new Error('freeze failed');
+      });
+
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      lockdownPrototypes();
+
+      expect(spy).toHaveBeenCalledWith('Mitigator Error: Failed to lockdown prototypes.');
+
+      Object.freeze = originalFreeze;
+      spy.mockRestore();
     });
   });
 

@@ -1,6 +1,6 @@
 {
   "name": "mitigator",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A production-grade, security-first TypeScript library for Node.js. Defends against XSS, Prototype Pollution, Path Traversal, SQL/NoSQL Injection, and more. Includes adaptive rate limiting, WebAuthn/Passkeys, AES-256-GCM sessions, and post-quantum cryptography (WOTS).",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -136,17 +136,21 @@
     "@eslint/js": "^9.16.0",
     "@types/node": "^25.6.0",
     "@types/sanitize-html": "^2.16.2",
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.4.2",
     "tslib": "^2.8.1",
     "tsup": "^8.3.5",
     "typescript": "^6.0.2",
-    "typescript-eslint": "^8.18.0",
-    "vitest": "^4.1.4"
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "sanitize-html": "^2.18.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.5",
+    "esbuild": "^0.28.2"
   }
 }

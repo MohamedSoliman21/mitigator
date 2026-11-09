@@ -11,6 +11,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.1.1] — 2026-11-09
+
+### Security
+
+- **Dependencies**: Updated `vitest` and `@vitest/coverage-v8` to `^5.1.0`, `typescript-eslint` to `^8.72.1`, `sanitize-html`'s `deepmerge` tree, and enforced `minimatch` (`^11.0.5`) and `esbuild` (`^0.28.2`) overrides to resolve all 14 `npm audit` advisories (`0 vulnerabilities`).
+
+---
+
 ## [1.1.0] — 2026-11-09
 
 ### Added
@@ -226,7 +234,8 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/MohamedSoliman21/mitigator/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.6...v1.1.0
 [1.0.6]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...v1.0.5
