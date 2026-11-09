@@ -29,18 +29,26 @@ describe('Sanitization Module', () => {
       expect(stripTags('<script>alert(1)</script>')).toBe('alert(1)');
     });
 
-    it('should handle nested tags', () => {
+    it('should handle nested tags and prevent double-bracket tag reconstruction', () => {
       expect(stripTags('<div><span>nested</span></div>')).toBe('nested');
+      expect(stripTags('<<script>script>alert(1)<</script>/script>')).not.toContain('<script>');
     });
   });
 
   describe('sanitizeHtml', () => {
-    it('should allow whitelisted tags and attributes', () => {
+    it('should allow whitelisted tags and safe CSS styles', () => {
       const input =
         '<p style="color:red">Hello <a href="https://example.com" title="link">World</a></p>';
       const sanitized = sanitizeHtml(input);
       expect(sanitized).toContain('<p style="color:red">');
       expect(sanitized).toContain('<a href="https://example.com" title="link">');
+    });
+
+    it('should strip dangerous CSS expressions and external url() styles', () => {
+      const input =
+        '<p style="background:url(javascript:alert(1)); position:fixed; color:red">Text</p>';
+      const sanitized = sanitizeHtml(input);
+      expect(sanitized).toBe('<p style="color:red">Text</p>');
     });
 
     it.each([

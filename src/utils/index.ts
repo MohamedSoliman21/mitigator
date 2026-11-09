@@ -138,10 +138,21 @@ export const startSelfHealingMonitor = (
 
 /**
  * SQL Injection Hardening.
+ *
+ * Ensures that queries containing filtering or mutation clauses (`WHERE`, `HAVING`,
+ * `VALUES`, `SET`) either supply bound parameters or are free of raw string literals,
+ * inline comments, and statement separators.
  */
 export const enforceSafeQuery = (query: string, params: unknown[]): void => {
-  if ((!params || params.length === 0) && query.toLowerCase().includes('where')) {
-    const suspicious = ["'", '"', '=', '--', ';'];
+  const lower = query.toLowerCase();
+  const hasDynamicClause =
+    lower.includes('where') ||
+    lower.includes('having') ||
+    lower.includes('values') ||
+    lower.includes('set');
+
+  if ((!params || params.length === 0) && hasDynamicClause) {
+    const suspicious = ["'", '"', '=', '--', ';', '/*'];
     if (suspicious.some((char) => query.includes(char))) {
       throw new SecureError(
         'Security Violation: Unparameterized query detected.',

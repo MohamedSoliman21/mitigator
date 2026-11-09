@@ -117,6 +117,9 @@ describe('Utils Module', () => {
       expect(() => enforceSafeQuery("SELECT * FROM users WHERE id = '1' --", [])).toThrow(
         'Security Violation',
       );
+      expect(() => enforceSafeQuery("INSERT INTO users VALUES ('admin', 'pass')", [])).toThrow(
+        'Security Violation',
+      );
       expect(() =>
         enforceSafeQuery(
           "SELECT * FROM users WHERE id = '1' --",

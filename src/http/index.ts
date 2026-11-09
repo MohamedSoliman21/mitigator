@@ -56,9 +56,13 @@ export interface HttpRequestLike {
 }
 
 /**
- * JA3 TLS Fingerprinting.
+ * Generates a deterministic SHA-256 fingerprint from standard HTTP request headers
+ * (`user-agent`, `accept`, `accept-language`, `accept-encoding`, `connection`,
+ * `upgrade-insecure-requests`).
+ *
+ * Note: This operates on application-layer HTTP headers, not raw TLS ClientHello packets (JA3).
  */
-export const generateTLSFingerprint = (req: HttpRequestLike): string => {
+export const generateHeaderFingerprint = (req: HttpRequestLike): string => {
   const headers = req.headers || {};
   const fingerprintParts = [
     headers['user-agent'] || '',
@@ -70,6 +74,11 @@ export const generateTLSFingerprint = (req: HttpRequestLike): string => {
   ];
   return createHash('sha256').update(fingerprintParts.join('|')).digest('hex');
 };
+
+/**
+ * @deprecated Renamed to {@link generateHeaderFingerprint} for accuracy (hashes HTTP headers, not TLS ClientHello packets).
+ */
+export const generateTLSFingerprint = generateHeaderFingerprint;
 
 /**
  * Analyzes traffic for DoS patterns.

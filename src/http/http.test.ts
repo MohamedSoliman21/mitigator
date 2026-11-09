@@ -7,6 +7,7 @@ import {
   isSafeRedirect,
   generateSRI,
   projectNoise,
+  generateHeaderFingerprint,
   generateTLSFingerprint,
   analyzeDoSThreat,
 } from './index.js';
@@ -117,8 +118,8 @@ describe('HTTP Module', () => {
     });
   });
 
-  describe('generateTLSFingerprint', () => {
-    it('should generate consistent TLS fingerprint based on headers', () => {
+  describe('generateHeaderFingerprint / generateTLSFingerprint', () => {
+    it('should generate consistent header fingerprint based on headers', () => {
       const req = {
         headers: {
           'user-agent': 'Mozilla',
@@ -129,13 +130,13 @@ describe('HTTP Module', () => {
           'upgrade-insecure-requests': '1',
         },
       };
-      const fp1 = generateTLSFingerprint(req);
+      const fp1 = generateHeaderFingerprint(req);
       const fp2 = generateTLSFingerprint(req);
       expect(fp1).toBe(fp2);
 
       const req2 = { headers: {} };
-      expect(generateTLSFingerprint(req2)).toBeDefined();
-      expect(generateTLSFingerprint({})).toBeDefined();
+      expect(generateHeaderFingerprint(req2)).toBeDefined();
+      expect(generateHeaderFingerprint({})).toBeDefined();
     });
   });
 

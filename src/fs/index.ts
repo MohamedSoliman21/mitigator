@@ -12,6 +12,10 @@ export const MAGIC_NUMBERS = {
 
 /**
  * Resolves a path relative to a root directory and ensures it doesn't escape the root.
+ *
+ * Note: This operates lexically on path strings. If the directory may contain untrusted
+ * symlinks, use {@link resolveSafeRealPath} or {@link safeRead} to also verify canonical
+ * symlink targets on disk.
  */
 export const resolveSafePath = (rootDir: string, userInputPath: string): string => {
   if (userInputPath.includes('\0') || rootDir.includes('\0')) {
@@ -28,6 +32,31 @@ export const resolveSafePath = (rootDir: string, userInputPath: string): string 
   }
 
   return resolvedPath;
+};
+
+/**
+ * Resolves the canonical physical path on disk (following symlinks via `fs.realpath`)
+ * and verifies that the target stays strictly within `rootDir`.
+ *
+ * Defends against both lexical path traversal (`../`) and symlink escape attacks.
+ */
+export const resolveSafeRealPath = async (
+  rootDir: string,
+  userInputPath: string,
+): Promise<string> => {
+  const lexicalTarget = resolveSafePath(rootDir, userInputPath);
+  const fs = await import('node:fs/promises');
+  const [realRoot, realTarget] = await Promise.all([
+    fs.realpath(resolve(rootDir)),
+    fs.realpath(lexicalTarget),
+  ]);
+
+  const relativeReal = relative(realRoot, realTarget);
+  if (relativeReal.startsWith('..') || isAbsolute(relativeReal)) {
+    throw new Error('Security Error: Symlink path traversal attempt detected.');
+  }
+
+  return realTarget;
 };
 
 /**

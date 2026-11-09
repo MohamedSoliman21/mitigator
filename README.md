@@ -60,8 +60,8 @@ npm install mitigator
 | `headers`   | Security headers (CSP, HSTS, etc.) and strict CSP builders.                          |
 | `auth`      | WebAuthn, HMAC challenge-response, CSRF, JWT validation, and RBAC helpers.           |
 | `crypto`    | AES session encryption, SSS, and PQC.                                                |
-| `fs`        | Secure path resolution and magic number file type verification.                      |
-| `http`      | URL normalization, TLS fingerprinting, and SRI generation.                           |
+| `fs`        | Secure path resolution, symlink-safe realpath checks, and magic number verification. |
+| `http`      | URL normalization, HTTP header fingerprinting, and SRI generation.                   |
 | `rateLimit` | Adaptive rate limiting and Token Bucket implementations.                             |
 | `safeJson`  | DoS-resistant and prototype-pollution safe JSON parsing.                             |
 | `safeMerge` | Deep merging protected against prototype pollution.                                  |
@@ -102,6 +102,9 @@ const root = './uploads';
 
 // This will throw if the path attempts to escape './uploads' (e.g., '../../etc/passwd')
 const safePath = fs.resolveSafePath(root, 'user-data.json');
+
+// Also verify physical symlink targets on disk stay within './uploads'
+const safeRealPath = await fs.resolveSafeRealPath(root, 'user-data.json');
 
 // Verify file type by Magic Numbers (more secure than extension check)
 const isPNG = await fs.verifyMagicNumber('image.bin', fs.MAGIC_NUMBERS.PNG);

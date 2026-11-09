@@ -100,20 +100,32 @@ export const isHoneyToken = (token: string, prefix: string = 'sk'): boolean => {
 };
 
 /**
- * CSRF management.
+ * CSRF management (Double-Submit Cookie / Signed Token pattern).
+ *
+ * - Without a `secret`: returns identical `token` and `cookieValue` for standard
+ *   stateless Double-Submit Cookie verification.
+ * - With a `secret`: binds `cookieValue` to `token` using `HMAC-SHA256(secret, token)`
+ *   (Signed Double-Submit Cookie pattern), protecting against subdomain cookie-tossing.
  */
-export const generateCSRF = () => {
+export const generateCSRF = (secret?: string) => {
   const token = randomBytes(32).toString('hex');
-  const cookieValue = randomBytes(32).toString('hex');
+  const cookieValue = secret ? createHmac('sha256', secret).update(token).digest('hex') : token;
   return { token, cookieValue };
 };
 
-export const verifyCSRF = (providedToken: string, cookieToken: string): boolean => {
+export const verifyCSRF = (
+  providedToken: string,
+  cookieToken: string,
+  secret?: string,
+): boolean => {
   if (!providedToken || !cookieToken) return false;
-  const tokenBuf = Buffer.from(providedToken, 'hex');
+  const expectedCookie = secret
+    ? createHmac('sha256', secret).update(providedToken).digest('hex')
+    : providedToken;
+  const expectedBuf = Buffer.from(expectedCookie, 'hex');
   const cookieBuf = Buffer.from(cookieToken, 'hex');
-  if (tokenBuf.length !== cookieBuf.length) return false;
-  return timingSafeEqual(tokenBuf, cookieBuf);
+  if (expectedBuf.length === 0 || expectedBuf.length !== cookieBuf.length) return false;
+  return timingSafeEqual(expectedBuf, cookieBuf);
 };
 
 /**

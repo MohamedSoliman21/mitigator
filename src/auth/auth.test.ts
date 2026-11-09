@@ -71,12 +71,22 @@ describe('Auth Module', () => {
   });
 
   describe('CSRF', () => {
-    it('should verify matching CSRF tokens', () => {
-      const { token } = generateCSRF();
-      expect(verifyCSRF(token, token)).toBe(true);
+    it('should verify matching double-submit CSRF tokens (stateless)', () => {
+      const { token, cookieValue } = generateCSRF();
+      expect(token).toBe(cookieValue);
+      expect(verifyCSRF(token, cookieValue)).toBe(true);
       expect(verifyCSRF(token, 'wrong')).toBe(false);
-      expect(verifyCSRF('', token)).toBe(false);
+      expect(verifyCSRF('', cookieValue)).toBe(false);
       expect(verifyCSRF(token, '')).toBe(false);
+    });
+
+    it('should generate and verify HMAC-signed CSRF tokens when a secret is provided', () => {
+      const secret = 'csrf-signing-secret';
+      const { token, cookieValue } = generateCSRF(secret);
+      expect(token).not.toBe(cookieValue);
+      expect(verifyCSRF(token, cookieValue, secret)).toBe(true);
+      expect(verifyCSRF(token, cookieValue, 'wrong-secret')).toBe(false);
+      expect(verifyCSRF(token, token, secret)).toBe(false);
     });
   });
 

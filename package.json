@@ -1,6 +1,6 @@
 {
   "name": "mitigator",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "description": "A production-grade, security-first TypeScript library for Node.js. Defends against XSS, Prototype Pollution, Path Traversal, SQL/NoSQL Injection, and more. Includes adaptive rate limiting, WebAuthn/Passkeys, AES-256-GCM sessions, and post-quantum cryptography (WOTS).",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -10,6 +10,71 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.js",
+      "require": "./dist/auth/index.cjs"
+    },
+    "./crypto": {
+      "types": "./dist/crypto/index.d.ts",
+      "import": "./dist/crypto/index.js",
+      "require": "./dist/crypto/index.cjs"
+    },
+    "./fs": {
+      "types": "./dist/fs/index.d.ts",
+      "import": "./dist/fs/index.js",
+      "require": "./dist/fs/index.cjs"
+    },
+    "./headers": {
+      "types": "./dist/headers/index.d.ts",
+      "import": "./dist/headers/index.js",
+      "require": "./dist/headers/index.cjs"
+    },
+    "./http": {
+      "types": "./dist/http/index.d.ts",
+      "import": "./dist/http/index.js",
+      "require": "./dist/http/index.cjs"
+    },
+    "./rate-limit": {
+      "types": "./dist/rate-limit/index.d.ts",
+      "import": "./dist/rate-limit/index.js",
+      "require": "./dist/rate-limit/index.cjs"
+    },
+    "./safe-json": {
+      "types": "./dist/safe-json/index.d.ts",
+      "import": "./dist/safe-json/index.js",
+      "require": "./dist/safe-json/index.cjs"
+    },
+    "./safe-merge": {
+      "types": "./dist/safe-merge/index.d.ts",
+      "import": "./dist/safe-merge/index.js",
+      "require": "./dist/safe-merge/index.cjs"
+    },
+    "./sanitize": {
+      "types": "./dist/sanitize/index.d.ts",
+      "import": "./dist/sanitize/index.js",
+      "require": "./dist/sanitize/index.cjs"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js",
+      "require": "./dist/utils/index.cjs"
+    },
+    "./presets": {
+      "types": "./dist/utils/presets.d.ts",
+      "import": "./dist/utils/presets.js",
+      "require": "./dist/utils/presets.cjs"
+    },
+    "./telemetry": {
+      "types": "./dist/utils/telemetry.d.ts",
+      "import": "./dist/utils/telemetry.js",
+      "require": "./dist/utils/telemetry.cjs"
+    },
+    "./validate": {
+      "types": "./dist/validate/index.d.ts",
+      "import": "./dist/validate/index.js",
+      "require": "./dist/validate/index.cjs"
     }
   },
   "type": "module",

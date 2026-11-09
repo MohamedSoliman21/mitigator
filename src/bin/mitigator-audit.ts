@@ -57,9 +57,10 @@ const auditFile = (filePath: string): AuditResult => {
 
     // 2. Dangerous File Sync / Path Traversal
     if (ext === '.js' || ext === '.ts') {
+      const strippedContent = content.replaceAll(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
       const traversalRegex =
         /fs\.(readFileSync|writeFileSync|readFile|writeFile)\(.*req\.(query|body|params)\./;
-      if (traversalRegex.test(content)) {
+      if (traversalRegex.test(strippedContent)) {
         result.vulnerabilities.push({
           type: 'Potential Path Traversal',
           severity: 'HIGH',
@@ -69,11 +70,12 @@ const auditFile = (filePath: string): AuditResult => {
       }
 
       // 3. Unsafe Merging without prototype check
-      if (content.includes('Object.assign(') || content.includes('JSON.parse(')) {
+      if (strippedContent.includes('Object.assign(') || strippedContent.includes('JSON.parse(')) {
         if (
-          !content.includes('safeMerge') &&
-          !content.includes('safeJson') &&
-          !content.includes('lockdownPrototypes')
+          !strippedContent.includes('safeMerge') &&
+          !strippedContent.includes('safeJson') &&
+          !strippedContent.includes('lockdownPrototypes') &&
+          !strippedContent.includes('__proto__')
         ) {
           result.vulnerabilities.push({
             type: 'Prototype Pollution Risk',
@@ -86,9 +88,9 @@ const auditFile = (filePath: string): AuditResult => {
 
       // 4. Missing secure headers in standard http/express setups
       if (
-        content.includes('express()') &&
-        !content.includes('presets.expressMiddleware') &&
-        !content.includes('helmet')
+        strippedContent.includes('express()') &&
+        !strippedContent.includes('expressMiddleware') &&
+        !strippedContent.includes('helmet')
       ) {
         result.vulnerabilities.push({
           type: 'Missing Security Headers',

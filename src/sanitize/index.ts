@@ -1,3 +1,5 @@
+import sanitizeHtmlLib from 'sanitize-html';
+
 /**
  * Basic HTML escaping for common characters.
  */
@@ -13,13 +15,39 @@ export const escapeHtml = (input: string): string => {
 };
 
 /**
- * Strips all HTML tags from a string.
+ * Strips all HTML tags from a string using `sanitize-html`'s HTML5 parser
+ * (immune to nested tag reconstruction and attribute `>` bypasses).
+ *
+ * Note: Per HTML5 parsing rules, non-visible executable tags (`<script>`, `<style>`)
+ * and their inner text are discarded completely rather than leaving raw script text behind.
  */
 export const stripTags = (input: string): string => {
-  return input.replaceAll(/<[^>]*>?/gm, '');
+  return sanitizeHtmlLib(input, {
+    allowedTags: [],
+    allowedAttributes: {},
+    nonTextTags: [],
+  });
 };
 
-import sanitizeHtmlLib from 'sanitize-html';
+/**
+ * Safe CSS property patterns allowed when `style` attributes are permitted.
+ * Blocks `url(...)`, `expression(...)`, `position: fixed/absolute` (UI redressing),
+ * and external resource loading.
+ */
+export const SAFE_CSS_STYLES: Record<string, Record<string, RegExp[]>> = {
+  '*': {
+    color: [/^#[0-9a-fA-F]{3,8}$/, /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/, /^[a-zA-Z]+$/],
+    'background-color': [
+      /^#[0-9a-fA-F]{3,8}$/,
+      /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/,
+      /^[a-zA-Z]+$/,
+    ],
+    'text-align': [/^left$/, /^right$/, /^center$/, /^justify$/],
+    'font-weight': [/^bold$/, /^normal$/, /^lighter$/, /^bolder$/, /^\d{3}$/],
+    'font-style': [/^italic$/, /^normal$/, /^oblique$/],
+    'text-decoration': [/^none$/, /^underline$/, /^line-through$/],
+  },
+};
 
 /**
  * Standard allowlist for "clean" HTML sanitization.
@@ -40,12 +68,17 @@ export const ALLOWLIST: Record<string, string[]> = {
 
 /**
  * Robust HTML sanitizer.
- * Uses the industry-standard `sanitize-html` library.
+ * Uses the industry-standard `sanitize-html` library with strict style and scheme filtering.
  */
-export const sanitizeHtml = (html: string, rules: Record<string, string[]> = ALLOWLIST): string => {
+export const sanitizeHtml = (
+  html: string,
+  rules: Record<string, string[]> = ALLOWLIST,
+  allowedStyles: Record<string, Record<string, RegExp[]>> = SAFE_CSS_STYLES,
+): string => {
   return sanitizeHtmlLib(html, {
     allowedTags: Object.keys(rules),
     allowedAttributes: rules,
+    allowedStyles,
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     allowProtocolRelative: false,
     enforceHtmlBoundary: true,

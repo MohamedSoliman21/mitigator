@@ -9,6 +9,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] — 2026-11-09
+
+### Added
+
+- **Subpath exports (`package.json` & `tsup.config.ts`)**: Added explicit ESM, CJS, and `.d.ts` subpath exports for all modules (`mitigator/auth`, `mitigator/crypto`, `mitigator/fs`, `mitigator/headers`, `mitigator/http`, `mitigator/rate-limit`, `mitigator/safe-json`, `mitigator/safe-merge`, `mitigator/sanitize`, `mitigator/utils`, `mitigator/presets`, `mitigator/telemetry`, `mitigator/validate`) to support tree-shaking and Edge runtime imports without pulling in Node-only modules.
+- **`fs.resolveSafeRealPath`**: Added async canonical symlink resolution via `fs.realpath` to prevent symlink escape / local file inclusion (LFI) attacks.
+- **`auth.generateCSRF` / `auth.verifyCSRF` HMAC signing**: Added optional `secret` parameter for HMAC-SHA256 Signed Double-Submit Cookie CSRF tokens.
+- **`sanitize.SAFE_CSS_STYLES`**: Added default CSS property allowlist to `sanitizeHtml` to block CSS expressions, external `url()` exfiltration, and `position: fixed` UI redressing.
+- **`http.generateHeaderFingerprint`**: Added accurately named HTTP header fingerprinting function (keeping `generateTLSFingerprint` as a `@deprecated` alias).
+
+### Fixed
+
+- **`auth.generateCSRF`**: Fixed bug where `generateCSRF()` returned two distinct random tokens for `token` and `cookieValue`, causing `verifyCSRF(token, cookieValue)` to always fail in stateless Double-Submit Cookie mode.
+- **`sanitize.stripTags`**: Replaced naive `/<[^>]*>?/gm` regex with `sanitize-html`'s HTML5 parser (`allowedTags: []`) to prevent nested tag reconstruction (`<<script>script>`) and attribute `>` bypasses.
+- **`utils.enforceSafeQuery`**: Extended unparameterized SQL injection detection beyond `WHERE` to also inspect `HAVING`, `VALUES`, and `SET` clauses as well as `/*` block comments.
+- **`mitigator-audit` CLI**: Stripped JS/TS comments before heuristic scanning to reduce false positives on commented-out code, and allowed destructured `expressMiddleware` imports.
+
 ### Docs
 
 - **CONTRIBUTING**: corrected the stated Node.js minimum (`>=20.0.0`) and replaced the stale "ZKP"
@@ -207,7 +226,8 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.6...v1.1.0
 [1.0.6]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.3...v1.0.4

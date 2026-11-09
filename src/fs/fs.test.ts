@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { resolveSafePath, verifyMagicNumber, safeRead, isPathSafe } from './index.js';
+import {
+  resolveSafePath,
+  resolveSafeRealPath,
+  verifyMagicNumber,
+  safeRead,
+  isPathSafe,
+} from './index.js';
 import * as fs from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -32,6 +38,30 @@ describe('Filesystem Module', () => {
     it('should resolve subdirectory paths correctly', () => {
       const resolved = resolveSafePath(rootDir, 'subdir/data.txt');
       expect(resolved).toBe(resolve(rootDir, 'subdir/data.txt'));
+    });
+  });
+
+  describe('resolveSafeRealPath', () => {
+    it('should resolve canonical path when symlink stays within root', async () => {
+      const target = resolve(rootDir, 'real-data.txt');
+      vi.mocked(fs.realpath).mockImplementation(async (p) => {
+        if (String(p) === rootDir) return rootDir;
+        return target;
+      });
+
+      const result = await resolveSafeRealPath(rootDir, 'link-to-data.txt');
+      expect(result).toBe(target);
+    });
+
+    it('should throw when a symlink points outside rootDir', async () => {
+      vi.mocked(fs.realpath).mockImplementation(async (p) => {
+        if (String(p) === rootDir) return rootDir;
+        return resolve('/etc/passwd');
+      });
+
+      await expect(resolveSafeRealPath(rootDir, 'evil-symlink')).rejects.toThrow(
+        'Symlink path traversal attempt detected',
+      );
     });
   });
 
