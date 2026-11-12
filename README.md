@@ -358,6 +358,3 @@ utils.wipeBuffer(keyBuffer); // Fills buffer with zeros
 
 ---
 
-## 📜 License
-
-ISC License - see [LICENSE](LICENSE) for details.
