@@ -6,7 +6,6 @@ import {
   wipeBuffer,
   enforceSafeQuery,
   deterministicDigitTransform,
-  encryptFPE,
   auditConfig,
   lockdownPrototypes,
   startSelfHealingMonitor,
@@ -150,14 +149,6 @@ describe('Utils Module', () => {
       expect(deterministicDigitTransform(input, secret)).toBe(
         deterministicDigitTransform(input, secret),
       );
-    });
-  });
-
-  describe('encryptFPE (deprecated alias)', () => {
-    it('should be identical to deterministicDigitTransform', () => {
-      const input = '1234567890';
-      const secret = 'legacy-secret';
-      expect(encryptFPE(input, secret)).toBe(deterministicDigitTransform(input, secret));
     });
   });
 
