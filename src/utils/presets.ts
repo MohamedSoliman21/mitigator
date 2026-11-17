@@ -69,10 +69,10 @@ export const expressMiddleware = (
 ) => {
   const limiter = options.rateLimit
     ? new RateLimiter(
-      options.rateLimitMax || 100,
-      options.rateLimitWindowMs || 60000,
-      new MemoryStore(options.rateLimitWindowMs || 60000),
-    )
+        options.rateLimitMax || 100,
+        options.rateLimitWindowMs || 60000,
+        new MemoryStore(options.rateLimitWindowMs || 60000),
+      )
     : null;
 
   return async (req: ExpressRequestLike, res: ExpressResponseLike, next: ExpressNextFunction) => {
@@ -193,15 +193,16 @@ export const fastifyPlugin = (
 ) => {
   const limiter = options.rateLimit
     ? new RateLimiter(
-      options.rateLimitMax || 100,
-      options.rateLimitWindowMs || 60000,
-      new MemoryStore(options.rateLimitWindowMs || 60000),
-    )
+        options.rateLimitMax || 100,
+        options.rateLimitWindowMs || 60000,
+        new MemoryStore(options.rateLimitWindowMs || 60000),
+      )
     : null;
 
   // Fastify requires async plugins (or a `done` callback); no await is needed here.
   // Fastify requires async plugins (or a `done` callback); no await is needed here.
-  return async (fastify: FastifyInstanceLike) => { // NOSONAR
+  return async (fastify: FastifyInstanceLike) => {
+    // NOSONAR
     // NOSONAR
     fastify.addHook('onRequest', async (req: FastifyRequestLike, reply: FastifyReplyLike) => {
       Object.entries(headers.standardHeaders).forEach(([key, value]) => {
@@ -219,7 +220,8 @@ export const fastifyPlugin = (
 
     // Async hook signals completion to Fastify without needing `done()`.
     // Async hook signals completion to Fastify without needing `done()`.
-    fastify.addHook('preHandler', async (req: FastifyRequestLike, reply: FastifyReplyLike) => { // NOSONAR
+    fastify.addHook('preHandler', async (req: FastifyRequestLike, reply: FastifyReplyLike) => {
+      // NOSONAR
       // NOSONAR
       try {
         if (req.body && typeof req.body === 'object') {

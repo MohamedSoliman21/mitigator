@@ -379,8 +379,8 @@ export const signPQC = (data: string | Buffer, privateKeyStr: string): string =>
   if (_usedWotsKeys.has(keyFingerprint)) {
     throw new Error(
       'WOTS_KEY_REUSE: This WOTS private key has already been used to sign a message. ' +
-      'Reusing a WOTS key leaks private key material and breaks the security of the scheme. ' +
-      'Generate a new key pair with generatePQCKeyPair() for each message.',
+        'Reusing a WOTS key leaks private key material and breaks the security of the scheme. ' +
+        'Generate a new key pair with generatePQCKeyPair() for each message.',
     );
   }
   _usedWotsKeys.add(keyFingerprint);

@@ -138,7 +138,12 @@ export const main = () => {
       $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
       runs: [
         {
-          tool: { driver: { name: 'mitigator-audit', informationUri: 'https://github.com/MohamedSoliman21/mitigator' } },
+          tool: {
+            driver: {
+              name: 'mitigator-audit',
+              informationUri: 'https://github.com/MohamedSoliman21/mitigator',
+            },
+          },
           results: results.flatMap((r) =>
             r.vulnerabilities.map((v) => ({
               ruleId: v.type.toLowerCase().replaceAll(/\s+/g, '-'),
