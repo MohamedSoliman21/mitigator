@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { randomBytes, timingSafeEqual, createHmac, createHash, verify } from 'node:crypto';
+import { randomBytes, timingSafeEqual, createHmac, createHash, sign, verify } from 'node:crypto';
 
 /**
  * Basic authentication helper (RFC 7617).
@@ -439,4 +439,218 @@ export const verifyPasskeyAssertion = (
   } catch (err: unknown) {
     return { verified: false, error: err instanceof Error ? err.message : String(err) };
   }
+};
+
+/**
+ * Generates a Time-based One-Time Password (TOTP) per RFC 6238.
+ */
+export const generateTOTP = (
+  secret: string | Buffer,
+  options: { stepSeconds?: number; digits?: number; timestampMs?: number } = {},
+): string => {
+  const { stepSeconds = 30, digits = 6, timestampMs = Date.now() } = options;
+  const counter = Math.floor(timestampMs / 1000 / stepSeconds);
+  const counterBuf = Buffer.alloc(8);
+  counterBuf.writeBigUInt64BE(BigInt(counter));
+
+  const key = Buffer.isBuffer(secret) ? secret : Buffer.from(secret, 'utf8');
+  const hmac = createHmac('sha1', key).update(counterBuf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+
+  return (code % 10 ** digits).toString().padStart(digits, '0');
+};
+
+/**
+ * Verifies a TOTP code using timing-safe comparison across a configurable drift window.
+ */
+export const verifyTOTP = (
+  token: string,
+  secret: string | Buffer,
+  options: { stepSeconds?: number; digits?: number; window?: number; timestampMs?: number } = {},
+): boolean => {
+  const { stepSeconds = 30, digits = 6, window = 1, timestampMs = Date.now() } = options;
+  if (!/^\d+$/.test(token) || token.length !== digits) return false;
+  const tokenBuf = Buffer.from(token, 'utf8');
+
+  for (let i = -window; i <= window; i++) {
+    const candidate = generateTOTP(secret, {
+      stepSeconds,
+      digits,
+      timestampMs: timestampMs + i * stepSeconds * 1000,
+    });
+    const candidateBuf = Buffer.from(candidate, 'utf8');
+    if (timingSafeEqual(tokenBuf, candidateBuf)) return true;
+  }
+  return false;
+};
+
+/**
+ * Generates single-use MFA backup codes.
+ */
+export const generateBackupCodes = (count: number = 8, length: number = 10): string[] => {
+  const codes: string[] = [];
+  for (let i = 0; i < count; i++) {
+    codes.push(
+      randomBytes(Math.ceil(length / 2))
+        .toString('hex')
+        .slice(0, length),
+    );
+  }
+  return codes;
+};
+
+export interface SignJwtOptions {
+  algorithm?: 'HS256' | 'HS384' | 'HS512' | 'RS256' | 'ES256';
+  expiresInSec?: number;
+  issuer?: string;
+  audience?: string;
+  subject?: string;
+  jwtId?: string;
+}
+
+/**
+ * Signs a JSON Web Token (JWT) using HS256/384/512, RS256, or ES256.
+ */
+export const signJwt = (
+  payload: Record<string, unknown>,
+  secretOrPrivateKey: string | Buffer,
+  options: SignJwtOptions = {},
+): string => {
+  const { algorithm = 'HS256', expiresInSec, issuer, audience, subject, jwtId } = options;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const claims: Record<string, unknown> = {
+    ...payload,
+    iat: payload.iat ?? nowSec,
+  };
+  if (expiresInSec !== undefined) claims.exp = nowSec + expiresInSec;
+  if (issuer !== undefined) claims.iss = issuer;
+  if (audience !== undefined) claims.aud = audience;
+  if (subject !== undefined) claims.sub = subject;
+  if (jwtId !== undefined) claims.jti = jwtId;
+
+  const headerB64 = Buffer.from(JSON.stringify({ alg: algorithm, typ: 'JWT' })).toString(
+    'base64url',
+  );
+  const payloadB64 = Buffer.from(JSON.stringify(claims)).toString('base64url');
+  const dataToSign = `${headerB64}.${payloadB64}`;
+
+  let sig: Buffer;
+  if (algorithm.startsWith('HS')) {
+    const hashAlg = algorithm.replace('HS', 'sha');
+    sig = createHmac(hashAlg, secretOrPrivateKey).update(dataToSign).digest();
+  } else if (algorithm.startsWith('RS')) {
+    const hashAlg = algorithm.replace('RS', 'sha');
+    sig = sign(hashAlg, Buffer.from(dataToSign), secretOrPrivateKey);
+  } else {
+    const hashAlg = algorithm.replace('ES', 'sha');
+    sig = sign(hashAlg, Buffer.from(dataToSign), {
+      key: secretOrPrivateKey,
+      dsaEncoding: 'ieee-p1363',
+    });
+  }
+
+  return `${dataToSign}.${sig.toString('base64url')}`;
+};
+
+export interface VerifyJwtOptions {
+  algorithm?: string;
+  issuer?: string;
+  audience?: string;
+}
+
+/**
+ * Verifies a JWT signature and claims (`exp`, `nbf`, `iat`, `iss`, `aud`),
+ * returning the decoded payload or `null` if invalid.
+ */
+export const verifyAndDecodeJwt = <T extends Record<string, unknown> = Record<string, unknown>>(
+  token: string,
+  secretOrPublicKey: string | Buffer,
+  options: VerifyJwtOptions = {},
+): T | null => {
+  const { algorithm = 'HS256', issuer, audience } = options;
+  if (!isJwtValid(token, secretOrPublicKey, algorithm)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) as T;
+    if (issuer !== undefined && payload.iss !== issuer) return null;
+    if (audience !== undefined && payload.aud !== audience) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Signs a webhook payload with a timestamped HMAC-SHA256 signature (`t=<ts>,v1=<hex>`).
+ */
+export const signWebhookPayload = (
+  payload: string | Buffer,
+  secret: string,
+  timestampSec: number = Math.floor(Date.now() / 1000),
+): string => {
+  const signedContent = `${timestampSec}.${Buffer.isBuffer(payload) ? payload.toString('utf8') : payload}`;
+  const sig = createHmac('sha256', secret).update(signedContent).digest('hex');
+  return `t=${timestampSec},v1=${sig}`;
+};
+
+/**
+ * Verifies a timestamped webhook signature (`t=<ts>,v1=<hex>`) with replay-window protection.
+ */
+export const verifyWebhookSignature = (
+  payload: string | Buffer,
+  signatureHeader: string,
+  secret: string,
+  toleranceSec: number = 300,
+): boolean => {
+  try {
+    const parts = Object.fromEntries(
+      signatureHeader.split(',').map((part) => {
+        const [k, v] = part.split('=');
+        return [k?.trim(), v?.trim()];
+      }),
+    );
+    const ts = Number.parseInt(parts.t || '', 10);
+    const sigHex = parts.v1;
+    if (!Number.isFinite(ts) || !sigHex) return false;
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (Math.abs(nowSec - ts) > toleranceSec) return false;
+
+    const signedContent = `${ts}.${Buffer.isBuffer(payload) ? payload.toString('utf8') : payload}`;
+    const expected = createHmac('sha256', secret).update(signedContent).digest('hex');
+    const sigBuf = Buffer.from(sigHex, 'hex');
+    const expectedBuf = Buffer.from(expected, 'hex');
+    if (sigBuf.length !== expectedBuf.length) return false;
+    return timingSafeEqual(sigBuf, expectedBuf);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Generates a prefixed API key (e.g. `mtg_live_<random>`).
+ */
+export const generateApiKey = (prefix: string = 'mtg_live'): string => {
+  return `${prefix}_${randomBytes(24).toString('base64url')}`;
+};
+
+/**
+ * Hashes an API key with SHA-256 for safe database storage.
+ */
+export const hashApiKey = (apiKey: string): string => {
+  return createHash('sha256').update(apiKey).digest('hex');
+};
+
+/**
+ * Verifies an API key against a stored SHA-256 hash using `timingSafeEqual`.
+ */
+export const verifyApiKey = (apiKey: string, storedHash: string): boolean => {
+  const actualBuf = Buffer.from(hashApiKey(apiKey), 'hex');
+  const storedBuf = Buffer.from(storedHash, 'hex');
+  if (actualBuf.length !== storedBuf.length) return false;
+  return timingSafeEqual(actualBuf, storedBuf);
 };

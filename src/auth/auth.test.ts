@@ -18,6 +18,16 @@ import {
   verifyPasskeyRegistration,
   verifyPasskeyAssertion,
   parseAuthenticatorData,
+  generateTOTP,
+  verifyTOTP,
+  generateBackupCodes,
+  signJwt,
+  verifyAndDecodeJwt,
+  signWebhookPayload,
+  verifyWebhookSignature,
+  generateApiKey,
+  hashApiKey,
+  verifyApiKey,
 } from './index.js';
 
 describe('Auth Module', () => {
@@ -655,6 +665,98 @@ describe('Auth Module', () => {
         publicKey,
       );
       expect(result.verified).toBe(false);
+    });
+  });
+
+  describe('TOTP & Backup Codes', () => {
+    it('should generate and verify TOTP within drift window', () => {
+      const secret = 'super-secret-totp-key';
+      const now = 1_700_000_000_000;
+      const code = generateTOTP(secret, { timestampMs: now });
+      expect(code).toMatch(/^\d{6}$/);
+      expect(verifyTOTP(code, secret, { timestampMs: now })).toBe(true);
+      expect(verifyTOTP(code, secret, { timestampMs: now + 30_000, window: 1 })).toBe(true);
+      expect(verifyTOTP('000000', secret, { timestampMs: now, window: 0 })).toBe(false);
+      expect(verifyTOTP('abc', secret)).toBe(false);
+    });
+
+    it('should generate backup codes', () => {
+      const codes = generateBackupCodes(5, 8);
+      expect(codes).toHaveLength(5);
+      codes.forEach((c) => expect(c).toHaveLength(8));
+    });
+  });
+
+  describe('JWT Sign & VerifyAndDecode', () => {
+    it('should sign and decode HS256, RS256, and ES256 tokens with claims', () => {
+      const hsToken = signJwt({ role: 'admin' }, 'hs-secret', {
+        algorithm: 'HS256',
+        expiresInSec: 60,
+        issuer: 'mitigator',
+        audience: 'api',
+        subject: 'user-1',
+        jwtId: 'jti-1',
+      });
+      const decoded = verifyAndDecodeJwt<{ role: string; iss: string }>(hsToken, 'hs-secret', {
+        algorithm: 'HS256',
+        issuer: 'mitigator',
+        audience: 'api',
+      });
+      expect(decoded?.role).toBe('admin');
+      expect(decoded?.iss).toBe('mitigator');
+      expect(verifyAndDecodeJwt(hsToken, 'hs-secret', { issuer: 'wrong' })).toBeNull();
+      expect(verifyAndDecodeJwt(hsToken, 'hs-secret', { audience: 'wrong' })).toBeNull();
+      expect(verifyAndDecodeJwt('bad.token', 'hs-secret')).toBeNull();
+
+      const { privateKey: rsaPriv, publicKey: rsaPub } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+      });
+      const rsToken = signJwt({ sub: 'u2' }, rsaPriv.export({ type: 'pkcs8', format: 'pem' }), {
+        algorithm: 'RS256',
+      });
+      expect(
+        verifyAndDecodeJwt(rsToken, rsaPub.export({ type: 'spki', format: 'pem' }), {
+          algorithm: 'RS256',
+        })?.sub,
+      ).toBe('u2');
+
+      const { privateKey: ecPriv, publicKey: ecPub } = crypto.generateKeyPairSync('ec', {
+        namedCurve: 'prime256v1',
+      });
+      const esToken = signJwt({ sub: 'u3' }, ecPriv.export({ type: 'pkcs8', format: 'pem' }), {
+        algorithm: 'ES256',
+      });
+      expect(
+        verifyAndDecodeJwt(esToken, ecPub.export({ type: 'spki', format: 'pem' }), {
+          algorithm: 'ES256',
+        })?.sub,
+      ).toBe('u3');
+    });
+  });
+
+  describe('Webhook Signatures', () => {
+    it('should sign and verify webhook payloads with replay protection', () => {
+      const payload = JSON.stringify({ event: 'invoice.paid' });
+      const secret = 'whsec_test';
+      const nowSec = Math.floor(Date.now() / 1000);
+      const header = signWebhookPayload(payload, secret, nowSec);
+      expect(verifyWebhookSignature(payload, header, secret)).toBe(true);
+      expect(verifyWebhookSignature(payload, header, 'wrong-secret')).toBe(false);
+
+      const staleHeader = signWebhookPayload(payload, secret, nowSec - 600);
+      expect(verifyWebhookSignature(payload, staleHeader, secret, 300)).toBe(false);
+      expect(verifyWebhookSignature(payload, 'malformed', secret)).toBe(false);
+    });
+  });
+
+  describe('API Key Management', () => {
+    it('should generate, hash, and verify API keys', () => {
+      const key = generateApiKey('mtg_test');
+      expect(key.startsWith('mtg_test_')).toBe(true);
+      const hash = hashApiKey(key);
+      expect(verifyApiKey(key, hash)).toBe(true);
+      expect(verifyApiKey('wrong_key', hash)).toBe(false);
+      expect(verifyApiKey(key, 'badhash')).toBe(false);
     });
   });
 });
