@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   isSecure,
   normalizeUrl,
@@ -8,8 +8,11 @@ import {
   generateSRI,
   projectNoise,
   generateHeaderFingerprint,
-  generateTLSFingerprint,
   analyzeDoSThreat,
+  isPrivateOrInternalIP,
+  validateSafeOutboundUrl,
+  createSafeDnsLookup,
+  safeFetch,
 } from './index.js';
 
 describe('HTTP Module', () => {
@@ -112,9 +115,9 @@ describe('HTTP Module', () => {
     });
 
     it('should return non-objects or null immediately', () => {
-      expect(projectNoise(null)).toBeNull();
-      expect(projectNoise('string')).toBe('string');
-      expect(projectNoise(123)).toBe(123);
+      expect(projectNoise(null as never)).toBeNull();
+      expect(projectNoise('string' as never)).toBe('string');
+      expect(projectNoise(123 as never)).toBe(123);
     });
   });
 
@@ -131,7 +134,7 @@ describe('HTTP Module', () => {
         },
       };
       const fp1 = generateHeaderFingerprint(req);
-      const fp2 = generateTLSFingerprint(req);
+      const fp2 = generateHeaderFingerprint(req);
       expect(fp1).toBe(fp2);
 
       const req2 = { headers: {} };
@@ -164,6 +167,103 @@ describe('HTTP Module', () => {
       };
       expect(analyzeDoSThreat(safe)).toBe(false);
       expect(analyzeDoSThreat({})).toBe(false);
+    });
+  });
+
+  describe('SSRF Protection', () => {
+    it('isPrivateOrInternalIP should identify private, loopback, link-local, and public IPs', () => {
+      expect(isPrivateOrInternalIP('127.0.0.1')).toBe(true);
+      expect(isPrivateOrInternalIP('10.0.0.1')).toBe(true);
+      expect(isPrivateOrInternalIP('172.16.0.1')).toBe(true);
+      expect(isPrivateOrInternalIP('192.168.1.1')).toBe(true);
+      expect(isPrivateOrInternalIP('169.254.169.254')).toBe(true);
+      expect(isPrivateOrInternalIP('100.64.0.1')).toBe(true);
+      expect(isPrivateOrInternalIP('224.0.0.1')).toBe(true);
+      expect(isPrivateOrInternalIP('8.8.8.8')).toBe(false);
+
+      expect(isPrivateOrInternalIP('::1')).toBe(true);
+      expect(isPrivateOrInternalIP('[::1]')).toBe(true);
+      expect(isPrivateOrInternalIP('::')).toBe(true);
+      expect(isPrivateOrInternalIP('::ffff:127.0.0.1')).toBe(true);
+      expect(isPrivateOrInternalIP('fc00::1')).toBe(true);
+      expect(isPrivateOrInternalIP('fe80::1')).toBe(true);
+      expect(isPrivateOrInternalIP('ff02::1')).toBe(true);
+      expect(isPrivateOrInternalIP('2001:4860:4860::8888')).toBe(false);
+      expect(isPrivateOrInternalIP('not-an-ip')).toBe(true);
+    });
+
+    it('validateSafeOutboundUrl should enforce protocol, credentials, host, and IP rules', () => {
+      expect(validateSafeOutboundUrl('https://api.example.com/data').hostname).toBe(
+        'api.example.com',
+      );
+      expect(validateSafeOutboundUrl('http://api.example.com', { allowHttp: true }).protocol).toBe(
+        'http:',
+      );
+      expect(() => validateSafeOutboundUrl('http://api.example.com')).toThrow(
+        /Disallowed protocol/,
+      );
+      expect(() => validateSafeOutboundUrl('https://user:pass@api.example.com')).toThrow(
+        /Embedded credentials/,
+      );
+      expect(() => validateSafeOutboundUrl('https://localhost/admin')).toThrow(
+        /Disallowed internal hostname/,
+      );
+      expect(() => validateSafeOutboundUrl('https://169.254.169.254/latest/meta-data')).toThrow(
+        /Private or internal IP/,
+      );
+      expect(() =>
+        validateSafeOutboundUrl('https://evil.com', { allowedHosts: ['api.example.com'] }),
+      ).toThrow(/allowedHosts/);
+    });
+
+    it('createSafeDnsLookup should allow public IPs and block private IPs', async () => {
+      const lookup = createSafeDnsLookup();
+      await expect(
+        new Promise((resolve, reject) => {
+          lookup('localhost', (err, address) => {
+            if (err) reject(err);
+            else resolve(address);
+          });
+        }),
+      ).rejects.toThrow(/private\/internal IP/);
+
+      await expect(
+        new Promise((resolve, reject) => {
+          lookup('nonexistent.invalid.example', { all: true }, (err, address) => {
+            if (err) reject(err);
+            else resolve(address);
+          });
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('safeFetch should fetch valid URLs and enforce maxBytes', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(
+        new Response('ok', {
+          status: 200,
+          headers: { 'content-length': '2' },
+        }),
+      );
+      vi.stubGlobal('fetch', mockFetch);
+
+      const res = await safeFetch('https://api.example.com/health');
+      expect(res.status).toBe(200);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.example.com/health',
+        expect.objectContaining({ redirect: 'error' }),
+      );
+
+      mockFetch.mockResolvedValueOnce(
+        new Response('too big', {
+          status: 200,
+          headers: { 'content-length': '1000' },
+        }),
+      );
+      await expect(safeFetch('https://api.example.com/large', { maxBytes: 100 })).rejects.toThrow(
+        /maximum allowed size/,
+      );
+
+      vi.unstubAllGlobals();
     });
   });
 });
