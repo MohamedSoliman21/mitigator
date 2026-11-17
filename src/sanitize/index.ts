@@ -150,3 +150,13 @@ export const isSafeUrl = (url: string): boolean => {
     );
   }
 };
+
+/**
+ * Normalizes Unicode to NFKC and strips zero-width and bidirectional control characters
+ * to defend against homograph and Trojan Source attacks.
+ */
+export const sanitizeUnicode = (input: string): string => {
+  return input
+    .normalize('NFKC')
+    .replaceAll(/[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g, '');
+};

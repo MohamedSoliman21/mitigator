@@ -45,7 +45,8 @@ const HIBP_PREFIX_REGEX = /^[0-9A-F]{5}$/;
  */
 export const checkPwnedPassword = (password: string): Promise<CheckPwnedResult> => {
   return new Promise((resolve) => {
-    const hash = createHash('sha1').update(password).digest('hex').toUpperCase();
+    // SHA-1 is mandated by the HIBP k-Anonymity range API; it is not used for security here.
+    const hash = createHash('sha1').update(password).digest('hex').toUpperCase(); // NOSONAR
     const prefix = hash.slice(0, 5);
     const suffix = hash.slice(5);
 
@@ -211,4 +212,34 @@ export const hasInjectionPattern = (input: string): boolean => {
     /(;|\||&&|\|\||`|\$)\s*(cat|ls|pwd|whoami|id|echo|bash|sh|ping|curl|wget)/i,
   ];
   return dangerousPatterns.some((pattern) => pattern.test(input));
+};
+
+/**
+ * Heuristic detection for common LLM prompt injection and Unicode smuggling patterns.
+ */
+export const hasPromptInjectionPattern = (input: string): boolean => {
+  if (typeof input !== 'string') return false;
+  if (/[\u{E0000}-\u{E007F}]/u.test(input)) return true; // Unicode tag smuggling
+  const patterns = [
+    /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+    /disregard\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+    /you\s+are\s+now\s+(in\s+)?developer\s+mode/i,
+    /reveal\s+(your\s+)?(system\s+prompt|instructions)/i,
+  ];
+  return patterns.some((p) => p.test(input));
+};
+
+/**
+ * Masks common PII and credential patterns (emails, credit cards, JWTs, bearer tokens)
+ * inside free-form strings and logs.
+ */
+export const maskPII = (input: string): string => {
+  return input
+    .replaceAll(
+      /\b([a-zA-Z0-9._%+-])[a-zA-Z0-9._%+-]*@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
+      '$1***@$2',
+    )
+    .replaceAll(/\b(?:\d[ -]*?){13,16}\b/g, '[REDACTED_CARD]')
+    .replaceAll(/\beyJ[\w-]+\.[\w-]+\.[\w-]+\b/g, '[REDACTED_JWT]')
+    .replaceAll(/Bearer\s+[\w.-]+/gi, 'Bearer [REDACTED_TOKEN]');
 };
