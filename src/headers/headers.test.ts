@@ -5,6 +5,9 @@ import {
   buildStrictCSP,
   parseCSPReport,
   standardHeaders,
+  crossOriginIsolationHeaders,
+  buildPermissionsPolicy,
+  createCorsGuard,
 } from './index.js';
 
 describe('Headers Module', () => {
@@ -99,6 +102,53 @@ describe('Headers Module', () => {
     it('should define recommended security headers', () => {
       expect(standardHeaders['X-Frame-Options']).toBe('DENY');
       expect(standardHeaders['X-Content-Type-Options']).toBe('nosniff');
+    });
+  });
+
+  describe('crossOriginIsolationHeaders', () => {
+    it('should define COOP, COEP, and CORP headers', () => {
+      expect(crossOriginIsolationHeaders['Cross-Origin-Opener-Policy']).toBe('same-origin');
+      expect(crossOriginIsolationHeaders['Cross-Origin-Embedder-Policy']).toBe('require-corp');
+      expect(crossOriginIsolationHeaders['Cross-Origin-Resource-Policy']).toBe('same-origin');
+    });
+  });
+
+  describe('buildPermissionsPolicy', () => {
+    it('should format Permissions-Policy directives', () => {
+      const policy = buildPermissionsPolicy({
+        camera: [],
+        microphone: ['self'],
+        geolocation: ['https://maps.example.com'],
+      });
+      expect(policy).toBe('camera=(), microphone=(self), geolocation=("https://maps.example.com")');
+    });
+  });
+
+  describe('createCorsGuard', () => {
+    it('should allowlisted origins and reject unknown or missing origins', () => {
+      const guard = createCorsGuard({
+        allowedOrigins: ['https://app.example.com'],
+        allowCredentials: true,
+      });
+      expect(guard(undefined)).toBeNull();
+      expect(guard('https://evil.com')).toBeNull();
+      expect(guard('https://app.example.com')).toEqual({
+        'Access-Control-Allow-Origin': 'https://app.example.com',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400',
+        'Access-Control-Allow-Credentials': 'true',
+        Vary: 'Origin',
+      });
+    });
+
+    it('should support wildcard without credentials and throw if combined with credentials', () => {
+      const wildcardGuard = createCorsGuard({ allowedOrigins: ['*'] });
+      expect(wildcardGuard('https://any.example.com')?.['Access-Control-Allow-Origin']).toBe('*');
+
+      expect(() => createCorsGuard({ allowedOrigins: ['*'], allowCredentials: true })).toThrow(
+        /allowCredentials/,
+      );
     });
   });
 });
