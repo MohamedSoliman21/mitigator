@@ -11,6 +11,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [2.0.0] — 2026-11-18
+
+> [!WARNING]
+> This release contains breaking changes. See **Removed** and **Changed** below.
+
+### Added
+
+- **SSRF Protection (`http`)**: Added `isPrivateOrInternalIP`, `validateSafeOutboundUrl`, `createSafeDnsLookup` (DNS rebinding defense), and `safeFetch` (timeout, redirect-blocking, and response size cap).
+- **CORS & Headers (`headers`)**: Added `crossOriginIsolationHeaders` (COOP/COEP/CORP), `buildPermissionsPolicy`, and `createCorsGuard` (strict origin allowlist with credential/wildcard safety check).
+- **Auth & Token Lifecycle (`auth`)**: Added `generateTOTP`, `verifyTOTP`, `generateBackupCodes`, `signJwt`, `verifyAndDecodeJwt`, `signWebhookPayload`, `verifyWebhookSignature`, `generateApiKey`, `hashApiKey`, and `verifyApiKey`.
+- **Crypto & Key Rotation (`crypto`)**: Added `Keyring`, `encryptSessionWithKeyring`, `decryptSessionWithKeyring`, `rotateSession` (with AAD & TTL support), and Ed25519/X25519 helpers (`generateEd25519KeyPair`, `signEd25519`, `verifyEd25519`, `generateX25519KeyPair`, `deriveSharedSecret`).
+- **File Hardening (`fs`)**: Expanded `MAGIC_NUMBERS` (`WEBP`, `ZIP`, `WASM`, `MP4`, `WAV`), added `sanitizeFilename`, and `validateArchiveEntries` (Zip-Slip & decompression bomb guard).
+- **AI/LLM Security & PII (`validate`, `sanitize`)**: Added `hasPromptInjectionPattern`, `maskPII`, and `sanitizeUnicode` (NFKC + zero-width/bidi stripping).
+- **Presets & CLI (`presets`, `mitigator-audit`)**: Added universal `fetchMiddleware` for Fetch-standard runtimes and `--format json|sarif` output in `mitigator-audit`.
+
+### Removed (Breaking)
+
+- **`http.generateTLSFingerprint`**: Removed `@deprecated` alias; use `http.generateHeaderFingerprint`.
+- **`utils.encryptFPE`**: Removed `@deprecated` alias; use `utils.deterministicDigitTransform`.
+
+### Changed (Breaking)
+
+- **`headers.standardHeaders`**: Enabled `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp`, and `Cross-Origin-Resource-Policy: same-origin` by default.
+
+---
+
 ## [1.1.0] — 2026-11-09
 
 ### Added
@@ -230,7 +256,8 @@ count: 0`) from "HIBP API was unreachable" (`apiAvailable: false`).
 - 200 unit tests across all modules. 100% line coverage.
 - GitHub Actions CI with Node.js 18/20/22 matrix, lint, format check, build, and coverage.
 
-[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/MohamedSoliman21/mitigator/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/MohamedSoliman21/mitigator/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.6...v1.1.0
 [1.0.6]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MohamedSoliman21/mitigator/compare/v1.0.4...v1.0.5
