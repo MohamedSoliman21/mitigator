@@ -119,12 +119,53 @@ export const runAudit = (targetDir: string = '.'): AuditResult[] => {
 // Main Execution
 export const main = () => {
   const args = process.argv.slice(2);
-  const target = args[0] || '.';
+  const formatIdx = args.indexOf('--format');
+  const format = formatIdx !== -1 ? args[formatIdx + 1] : 'text';
+  const formatValIdx = formatIdx !== -1 ? formatIdx + 1 : -1;
+  const target = args.find((a, idx) => !a.startsWith('--') && idx !== formatValIdx) || '.';
+
+  const results = runAudit(target);
+
+  if (format === 'json') {
+    console.log(JSON.stringify(results, null, 2));
+    const hasHigh = results.some((r) => r.vulnerabilities.some((v) => v.severity === 'HIGH'));
+    process.exit(hasHigh ? 1 : 0);
+  }
+
+  if (format === 'sarif') {
+    const sarif = {
+      version: '2.1.0',
+      $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+      runs: [
+        {
+          tool: { driver: { name: 'mitigator-audit', informationUri: 'https://github.com/MohamedSoliman21/mitigator' } },
+          results: results.flatMap((r) =>
+            r.vulnerabilities.map((v) => ({
+              ruleId: v.type.toLowerCase().replaceAll(/\s+/g, '-'),
+              level: v.severity === 'HIGH' ? 'error' : 'warning',
+              message: { text: v.message },
+              locations: [
+                {
+                  physicalLocation: {
+                    artifactLocation: { uri: r.filePath },
+                    region: v.line ? { startLine: v.line } : undefined,
+                  },
+                },
+              ],
+            })),
+          ),
+        },
+      ],
+    };
+    console.log(JSON.stringify(sarif, null, 2));
+    const hasHigh = results.some((r) => r.vulnerabilities.some((v) => v.severity === 'HIGH'));
+    process.exit(hasHigh ? 1 : 0);
+  }
+
   console.log(
     `🛡️  Mitigator Security Audit: Scanning [${target}] for vulnerabilities and configuration drifts...\n`,
   );
 
-  const results = runAudit(target);
   let totalHigh = 0;
   let totalMedium = 0;
 

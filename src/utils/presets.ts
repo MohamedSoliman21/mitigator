@@ -69,10 +69,10 @@ export const expressMiddleware = (
 ) => {
   const limiter = options.rateLimit
     ? new RateLimiter(
-        options.rateLimitMax || 100,
-        options.rateLimitWindowMs || 60000,
-        new MemoryStore(options.rateLimitWindowMs || 60000),
-      )
+      options.rateLimitMax || 100,
+      options.rateLimitWindowMs || 60000,
+      new MemoryStore(options.rateLimitWindowMs || 60000),
+    )
     : null;
 
   return async (req: ExpressRequestLike, res: ExpressResponseLike, next: ExpressNextFunction) => {
@@ -117,6 +117,15 @@ export const nextJsMiddleware = (_req: unknown, res: NextJsResponseLike) => {
   return res;
 };
 
+const toSecureError = (err: unknown, fallbackCode?: string): SecureError => {
+  if (err instanceof SecureError) return err;
+  let msg = 'Error';
+  if (err instanceof Error) msg = err.message;
+  else if (typeof err === 'string' || typeof err === 'number' || typeof err === 'boolean')
+    msg = String(err);
+  return new SecureError(msg, fallbackCode);
+};
+
 /**
  * Global response error handler for Express.
  */
@@ -126,10 +135,7 @@ export const expressErrorHandler = (
   res: ExpressResponseLike,
   _next: ExpressNextFunction,
 ) => {
-  const secureErr =
-    err instanceof SecureError
-      ? err
-      : new SecureError(err instanceof Error ? err.message : String(err));
+  const secureErr = toSecureError(err);
   res.status(secureErr.code === 'BAD_INPUT' ? 400 : 500).json(secureErr.toJSON());
 };
 
@@ -167,10 +173,7 @@ export class SecureLoggerChain {
   }
 
   error(msg: string, err?: unknown) {
-    const secureErr =
-      err instanceof SecureError
-        ? err
-        : new SecureError(err instanceof Error ? err.message : String(err || 'Error'));
+    const secureErr = toSecureError(err);
     const hash = this.chain(msg, secureErr.toJSON());
     this.baseLogger.error(`[CHAIN:${hash}] ${msg}`, redact(secureErr.toJSON()));
   }
@@ -190,13 +193,16 @@ export const fastifyPlugin = (
 ) => {
   const limiter = options.rateLimit
     ? new RateLimiter(
-        options.rateLimitMax || 100,
-        options.rateLimitWindowMs || 60000,
-        new MemoryStore(options.rateLimitWindowMs || 60000),
-      )
+      options.rateLimitMax || 100,
+      options.rateLimitWindowMs || 60000,
+      new MemoryStore(options.rateLimitWindowMs || 60000),
+    )
     : null;
 
-  return async (fastify: FastifyInstanceLike) => {
+  // Fastify requires async plugins (or a `done` callback); no await is needed here.
+  // Fastify requires async plugins (or a `done` callback); no await is needed here.
+  return async (fastify: FastifyInstanceLike) => { // NOSONAR
+    // NOSONAR
     fastify.addHook('onRequest', async (req: FastifyRequestLike, reply: FastifyReplyLike) => {
       Object.entries(headers.standardHeaders).forEach(([key, value]) => {
         reply.header(key, value);
@@ -211,7 +217,10 @@ export const fastifyPlugin = (
       }
     });
 
-    fastify.addHook('preHandler', async (req: FastifyRequestLike, reply: FastifyReplyLike) => {
+    // Async hook signals completion to Fastify without needing `done()`.
+    // Async hook signals completion to Fastify without needing `done()`.
+    fastify.addHook('preHandler', async (req: FastifyRequestLike, reply: FastifyReplyLike) => { // NOSONAR
+      // NOSONAR
       try {
         if (req.body && typeof req.body === 'object') {
           if (validate.scanForSecrets(req.body)) {
@@ -222,10 +231,7 @@ export const fastifyPlugin = (
           }
         }
       } catch (err: unknown) {
-        const secureErr =
-          err instanceof SecureError
-            ? err
-            : new SecureError(err instanceof Error ? err.message : String(err), 'BAD_INPUT');
+        const secureErr = toSecureError(err, 'BAD_INPUT');
         reply.code(400).send(secureErr.toJSON());
         return reply;
       }
@@ -280,10 +286,7 @@ export class NestJsMitigatorMiddleware {
         }
       }
     } catch (err: unknown) {
-      const secureErr =
-        err instanceof SecureError
-          ? err
-          : new SecureError(err instanceof Error ? err.message : String(err), 'BAD_INPUT');
+      const secureErr = toSecureError(err, 'BAD_INPUT');
       res.status(400).json(secureErr.toJSON());
       return;
     }
@@ -295,3 +298,29 @@ export class NestJsMitigatorMiddleware {
     next();
   }
 }
+
+/**
+ * Universal Fetch-standard security middleware for Hono, Bun, Deno, Cloudflare Workers,
+ * and Next.js App Router. Returns a `429` Response if rate-limited, or `null` if allowed,
+ * along with the security `headers` to apply to the outgoing Response.
+ */
+export const fetchMiddleware = async (
+  request: Request,
+  options: { rateLimit?: boolean; rateLimitWindowMs?: number; rateLimitMax?: number } = {},
+  limiter?: RateLimiter,
+): Promise<{ blocked: Response | null; headers: Record<string, string> }> => {
+  const securityHeaders = { ...headers.standardHeaders };
+  if (options.rateLimit && limiter) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (await limiter.isLimited(ip)) {
+      return {
+        blocked: new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', ...securityHeaders },
+        }),
+        headers: securityHeaders,
+      };
+    }
+  }
+  return { blocked: null, headers: securityHeaders };
+};
