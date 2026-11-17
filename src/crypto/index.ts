@@ -8,6 +8,12 @@ import {
   createCipheriv,
   createDecipheriv,
   hkdfSync,
+  generateKeyPairSync,
+  sign as cryptoSign,
+  verify as cryptoVerify,
+  diffieHellman,
+  createPrivateKey,
+  createPublicKey,
 } from 'node:crypto';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -373,8 +379,8 @@ export const signPQC = (data: string | Buffer, privateKeyStr: string): string =>
   if (_usedWotsKeys.has(keyFingerprint)) {
     throw new Error(
       'WOTS_KEY_REUSE: This WOTS private key has already been used to sign a message. ' +
-        'Reusing a WOTS key leaks private key material and breaks the security of the scheme. ' +
-        'Generate a new key pair with generatePQCKeyPair() for each message.',
+      'Reusing a WOTS key leaks private key material and breaks the security of the scheme. ' +
+      'Generate a new key pair with generatePQCKeyPair() for each message.',
     );
   }
   _usedWotsKeys.add(keyFingerprint);
@@ -474,47 +480,182 @@ export const sha256 = (data: string): string => {
   return createHash('sha256').update(data).digest('hex');
 };
 
+type WorkerTask = (args: unknown[]) => Promise<unknown>;
+
+const WORKER_TASKS: Record<string, WorkerTask> = {
+  hashPassword: async ([password, salt]) =>
+    password === undefined ? undefined : hashPassword(password as string, salt as string),
+  splitSecret: async ([secret, sharesCount, threshold]) =>
+    splitSecret(secret as string | Buffer, sharesCount as number, threshold as number),
+  reconstructSecret: async ([shares]) => reconstructSecret(shares as string[]).toString('hex'),
+};
+
+const runWorkerTask = async (
+  port: { postMessage(msg: unknown): void },
+  data: { functionName?: string; args?: unknown[] } | undefined,
+): Promise<void> => {
+  const { functionName = '', args = [] } = data || {};
+  const task = WORKER_TASKS[functionName];
+  if (!task) {
+    port.postMessage({ status: 'error', error: `Unknown function: ${functionName}` });
+    return;
+  }
+  try {
+    const result = await task(args);
+    port.postMessage(result === undefined ? { status: 'success' } : { status: 'success', result });
+  } catch (err: unknown) {
+    port.postMessage({ status: 'error', error: err instanceof Error ? err.message : String(err) });
+  }
+};
+
 const startWorkerIfChild = async () => {
   try {
     const { isMainThread, parentPort, workerData } = await import('node:worker_threads');
-    if (!isMainThread && parentPort) {
-      try {
-        const { functionName, args = [] } = workerData || {};
-        if (functionName === 'hashPassword') {
-          const [password, salt] = args;
-          if (password === undefined) {
-            parentPort.postMessage({ status: 'success' });
-          } else {
-            hashPassword(password, salt)
-              .then((result) => {
-                parentPort.postMessage({ status: 'success', result });
-              })
-              .catch((err) => {
-                parentPort.postMessage({ status: 'error', error: err.message });
-              });
-          }
-        } else if (functionName === 'splitSecret') {
-          const [secret, sharesCount, threshold] = args;
-          const result = splitSecret(secret, sharesCount, threshold);
-          parentPort.postMessage({ status: 'success', result });
-        } else if (functionName === 'reconstructSecret') {
-          const [shares] = args;
-          const result = reconstructSecret(shares);
-          parentPort.postMessage({ status: 'success', result: result.toString('hex') });
-        } else {
-          parentPort.postMessage({ status: 'error', error: `Unknown function: ${functionName}` });
-        }
-      } catch (err: unknown) {
-        parentPort.postMessage({
-          status: 'error',
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
+    if (!isMainThread && parentPort) await runWorkerTask(parentPort, workerData);
   } catch {
     // node:worker_threads is not supported/needed in this environment, skip execution
   }
 };
 
 // Start worker if executed inside worker child thread (void expression to avoid unhandled promise while keeping CJS compatibility)
-void startWorkerIfChild();
+// NOSONAR: top-level await is unavailable in the CJS build output.
+void startWorkerIfChild(); // NOSONAR
+
+/**
+ * Versioned keyring for AES-256-GCM session encryption and zero-downtime key rotation.
+ */
+export class Keyring {
+  constructor(
+    public readonly currentVersion: string,
+    private readonly keys: Record<string, string | Buffer>,
+  ) {
+    if (!keys[currentVersion]) {
+      throw new Error(`Keyring: currentVersion "${currentVersion}" not found in keys map.`);
+    }
+  }
+
+  getKey(version: string): Buffer | undefined {
+    const k = this.keys[version];
+    if (!k) return undefined;
+    return Buffer.isBuffer(k) ? k : Buffer.from(k, 'hex');
+  }
+}
+
+export interface KeyringEncryptOptions {
+  aad?: string | Buffer;
+  ttlMs?: number;
+}
+
+/**
+ * Encrypts a session payload using the current key in a `Keyring`,
+ * optionally binding Additional Authenticated Data (AAD) and a TTL.
+ */
+export const encryptSessionWithKeyring = (
+  obj: unknown,
+  keyring: Keyring,
+  options: KeyringEncryptOptions = {},
+): string => {
+  const keyBuffer = keyring.getKey(keyring.currentVersion)!;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', keyBuffer, iv);
+  if (options.aad !== undefined) {
+    cipher.setAAD(Buffer.isBuffer(options.aad) ? options.aad : Buffer.from(options.aad, 'utf8'));
+  }
+  const envelope =
+    options.ttlMs !== undefined ? { data: obj, exp: Date.now() + options.ttlMs } : { data: obj };
+  let encrypted = cipher.update(JSON.stringify(envelope), 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag().toString('hex');
+  return `${keyring.currentVersion}:${iv.toString('hex')}:${authTag}:${encrypted}`;
+};
+
+/**
+ * Decrypts a versioned session payload using the matching key from a `Keyring`.
+ */
+export const decryptSessionWithKeyring = <T = unknown>(
+  sessionStr: string,
+  keyring: Keyring,
+  aad?: string | Buffer,
+): T | null => {
+  try {
+    const [version, ivHex, authTagHex, encrypted] = sessionStr.split(':');
+    const keyBuffer = keyring.getKey(version);
+    if (!keyBuffer || !ivHex || !authTagHex || !encrypted) return null;
+
+    const decipher = createDecipheriv('aes-256-gcm', keyBuffer, Buffer.from(ivHex, 'hex'));
+    if (aad !== undefined) {
+      decipher.setAAD(Buffer.isBuffer(aad) ? aad : Buffer.from(aad, 'utf8'));
+    }
+    decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    const envelope = JSON.parse(decrypted) as { data: T; exp?: number };
+    if (envelope.exp !== undefined && Date.now() > envelope.exp) return null;
+    return envelope.data;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Re-encrypts a session payload under the `Keyring`'s current key version.
+ */
+export const rotateSession = (
+  sessionStr: string,
+  keyring: Keyring,
+  options: KeyringEncryptOptions = {},
+): string | null => {
+  const data = decryptSessionWithKeyring(sessionStr, keyring, options.aad);
+  if (data === null) return null;
+  return encryptSessionWithKeyring(data, keyring, options);
+};
+
+/**
+ * Generates an Ed25519 key pair (PEM SPKI/PKCS8) for fast modern signatures.
+ */
+export const generateEd25519KeyPair = (): { publicKey: string; privateKey: string } => {
+  return generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+};
+
+export const signEd25519 = (data: string | Buffer, privateKeyPem: string): string => {
+  return cryptoSign(null, Buffer.isBuffer(data) ? data : Buffer.from(data), privateKeyPem).toString(
+    'base64url',
+  );
+};
+
+export const verifyEd25519 = (
+  data: string | Buffer,
+  signatureB64Url: string,
+  publicKeyPem: string,
+): boolean => {
+  try {
+    return cryptoVerify(
+      null,
+      Buffer.isBuffer(data) ? data : Buffer.from(data),
+      publicKeyPem,
+      Buffer.from(signatureB64Url, 'base64url'),
+    );
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Generates an X25519 key pair (PEM SPKI/PKCS8) for Diffie-Hellman key agreement.
+ */
+export const generateX25519KeyPair = (): { publicKey: string; privateKey: string } => {
+  return generateKeyPairSync('x25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+};
+
+export const deriveSharedSecret = (privateKeyPem: string, peerPublicKeyPem: string): Buffer => {
+  return diffieHellman({
+    privateKey: createPrivateKey(privateKeyPem),
+    publicKey: createPublicKey(peerPublicKeyPem),
+  });
+};
